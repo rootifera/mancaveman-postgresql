@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  mancaveman:
+    build: .
+    image: rootifera/mancaveman:psql
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SQLALCHEMY_DATABASE_URL=${SQLALCHEMY_DATABASE_URL}
+    networks:
+      - cavenetwork
+    volumes:
+      - config:/app/config
+      - uploads:/app/uploads
+
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cavenetwork
+
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+    networks:
+      - cavenetwork
+
+networks:
+  cavenetwork:
+
+volumes:
+  postgres_data:
+  config:
+  uploads:
