@@ -27,8 +27,8 @@ psutil==5.9.8
 psycopg2-binary==2.9.9
 pyasn1==0.5.1
 pycparser==2.21
-pydantic==2.5.3
-pydantic_core==2.14.6
+pydantic==2.6.2
+pydantic_core==2.16.3
 PyJWT==2.8.0
 pyOpenSSL==24.0.0
 PySocks==1.7.1
@@ -46,5 +46,5 @@ starlette==0.36.3
 starlette-context==0.3.6
 typing_extensions==4.10.0
 urllib3==2.2.1
-uvicorn==0.27.0.post1
+uvicorn==0.27.1
 validators==0.22.0
