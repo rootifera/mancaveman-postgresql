@@ -157,6 +157,5 @@ VALUES ('3Com'),
        ('Xiaomi'),
        ('Zalman'),
        ('Zenith Data Systems'),
-       ('Zotac')
-ON CONFLICT
+       ('Zotac') ON CONFLICT
     DO NOTHING;

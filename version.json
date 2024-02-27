@@ -2,10 +2,11 @@
   "mancave": [
     {
       "appName": "Mancaveman API",
-      "version": "0.1.0",
+      "database": "PostgreSQL",
+      "version": "0.1.1",
       "buildDate": "2024-02-27",
-      "buildName": "Celso Flores",
-      "buildID": "fc430fb9221a3ffad43cba96"
+      "buildName": "Salvador Limones",
+      "buildID": "b6fb2ff27e8d652b8a385339"
     }
   ],
   "inherit": true

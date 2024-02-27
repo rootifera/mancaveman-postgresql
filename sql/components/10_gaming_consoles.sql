@@ -43,6 +43,5 @@ VALUES ('Atari 2600', 10),
        ('Steam Deck', 10),
        ('Super Nintendo Entertainment System (SNES)', 10),
        ('TurboGrafx-16', 10),
-       ('Valve Steam Machine', 10)
-ON CONFLICT
+       ('Valve Steam Machine', 10) ON CONFLICT
     DO NOTHING;

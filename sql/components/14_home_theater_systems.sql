@@ -33,6 +33,5 @@ VALUES ('AV Receiver', 14),
        ('Video Calibration Equipment', 14),
        ('VR Headset', 14),
        ('Wireless Audio Transmitters', 14),
-       ('Wireless Speaker System', 14)
-ON CONFLICT
+       ('Wireless Speaker System', 14) ON CONFLICT
     DO NOTHING;

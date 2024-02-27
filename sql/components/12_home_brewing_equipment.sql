@@ -42,6 +42,5 @@ VALUES ('Airlock', 12),
        ('Thermometer', 12),
        ('Transfer Pump', 12),
        ('Wort Chiller', 12),
-       ('Yeast Starter Kit', 12)
-ON CONFLICT
+       ('Yeast Starter Kit', 12) ON CONFLICT
     DO NOTHING;

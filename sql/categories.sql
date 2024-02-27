@@ -19,6 +19,5 @@ VALUES ('Arcade Machines and Accessories'),
        ('Outdoor Equipment'),
        ('Power Tools'),
        ('Sporting Goods'),
-       ('Tools')
-ON CONFLICT
+       ('Tools') ON CONFLICT
     DO NOTHING;

@@ -31,6 +31,5 @@ VALUES ('Adjustable Bench', 13),
        ('Treadmill', 13),
        ('Weight Plates', 13),
        ('Weighted Vest', 13),
-       ('Yoga Mat', 13)
-ON CONFLICT
+       ('Yoga Mat', 13) ON CONFLICT
     DO NOTHING;
