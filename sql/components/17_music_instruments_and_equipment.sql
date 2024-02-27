@@ -43,6 +43,5 @@ VALUES ('Acoustic Guitar', 17),
        ('USB Microphone', 17),
        ('Violin', 17),
        ('Vocal Booth', 17),
-       ('Xylophone', 17)
-ON CONFLICT
+       ('Xylophone', 17) ON CONFLICT
     DO NOTHING;

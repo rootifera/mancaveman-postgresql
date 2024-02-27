@@ -36,6 +36,5 @@ VALUES ('2K Games'),
        ('Ubisoft'),
        ('Valve Corporation'),
        ('Vivendi Games'),
-       ('Westwood Studios')
-ON CONFLICT
+       ('Westwood Studios') ON CONFLICT
     DO NOTHING;

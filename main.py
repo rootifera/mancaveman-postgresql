@@ -63,6 +63,7 @@ async def root():
     return {
         'appName': ver_info["mancave"][0]["appName"],
         'version': ver_info["mancave"][0]["version"],
+        'database': ver_info["mancave"][0]["database"],
         "buildDate": ver_info["mancave"][0]["buildDate"],
         "buildName": ver_info["mancave"][0]["buildName"],
         "buildID": ver_info["mancave"][0]["buildID"]

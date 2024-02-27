@@ -251,6 +251,5 @@ VALUES ('Accolade'),
        ('Yukes'),
        ('Zen Studios'),
        ('ZeniMax Online Studios'),
-       ('Zipper Interactive')
-ON CONFLICT
+       ('Zipper Interactive') ON CONFLICT
     DO NOTHING;

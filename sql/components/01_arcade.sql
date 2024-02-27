@@ -102,6 +102,5 @@ VALUES ('Arcade Control Panel', 1),
        ('Wiring Harness Clamp', 1),
        ('Wiring Harness Splitter', 1),
        ('Wiring Harness Tester', 1),
-       ('Wiring Harness Wrap', 1)
-ON CONFLICT
+       ('Wiring Harness Wrap', 1) ON CONFLICT
     DO NOTHING;

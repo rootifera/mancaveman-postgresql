@@ -51,6 +51,5 @@ VALUES ('3DO'),
        ('Xbox 360'),
        ('Xbox One'),
        ('Xbox Series X/S'),
-       ('ZX Spectrum')
-ON CONFLICT
+       ('ZX Spectrum') ON CONFLICT
     DO NOTHING;

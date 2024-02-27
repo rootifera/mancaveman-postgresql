@@ -29,6 +29,5 @@ VALUES ('Aircraft Model Kits', 16),
        ('Train Model Kits', 16),
        ('Truck Model Kits', 16),
        ('Warship Model Kits', 16),
-       ('Wildlife Miniatures', 16)
-ON CONFLICT
+       ('Wildlife Miniatures', 16) ON CONFLICT
     DO NOTHING;
