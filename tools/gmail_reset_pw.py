@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 
-from tools.config_manager import get_email_credentials, get_domain_name
+from tools.config_manager_redis import get_email_credentials, get_domain_name
 
 
 def send_pw_reset_email(receiver: str, token: str):

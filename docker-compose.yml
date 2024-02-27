@@ -36,6 +36,8 @@ services:
       - "6379:6379"
     networks:
       - cavenetwork
+    volumes:
+      - redis_data:/data
 
 networks:
   cavenetwork:
@@ -44,3 +46,4 @@ volumes:
   postgres_data:
   config:
   uploads:
+  redis_data:
