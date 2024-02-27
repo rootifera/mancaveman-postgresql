@@ -21,7 +21,8 @@ ENV PATH="/home/caveman/.local/bin:${PATH}"
 ENV FORWARDED_ALLOW_IPS="*"
 
 RUN pip install --no-cache-dir -r requirements.txt && \
-    pip uninstall -y ecdsa
+    pip uninstall -y ecdsa && \
+    pip install --upgrade pip
 
 EXPOSE 8080
 
