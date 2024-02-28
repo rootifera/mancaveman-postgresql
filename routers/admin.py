@@ -11,7 +11,8 @@ from dependencies import db_dependency, user_dependency, bcrypt_context
 from models import CreateUserRequest, Users, Hardware, Software
 from tools import actionlog
 from tools.common import validate_admin
-from tools.config_manager_redis import get_hostname, get_email_credentials, get_health_check_key
+from tools.config_manager_redis import get_hostname, get_email_credentials, get_health_check_key, is_app_passwd_valid, \
+    is_hostname_valid, set_hostname, set_email_credentials
 from .auth import is_unique_username_and_email
 
 router = APIRouter(
@@ -125,3 +126,18 @@ async def get_server_config(user: user_dependency):
 
     return {"gmail_username": email_user, "hostname": host_name, "health_check_key": health_key}
 
+
+@router.post("/set_server_config")
+async def set_server_config(user: user_dependency, host_name: str, email_user: str, email_app_passwd: str):
+    validate_admin(user)
+
+    host_name = host_name.strip().lower()
+    email_app_passwd = email_app_passwd.strip().lower()
+
+    if not is_hostname_valid(host_name):
+        return {"error": "invalid hostname"}
+    if not is_app_passwd_valid(email_app_passwd):
+        return {"error": "invalid app password."}
+
+    await set_hostname(host_name)
+    await set_email_credentials(email_user, email_app_passwd)

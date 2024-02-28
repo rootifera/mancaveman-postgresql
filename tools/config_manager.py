@@ -1,15 +1,12 @@
 """Config Generator module"""
 import logging
 import os
-import re
 
-import validators
 from passlib.context import CryptContext
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
 import database
-from definitions import CONFIG_PATH
 from models import Users, InitDB
 from .config_loader import load_config
 
@@ -22,71 +19,11 @@ logging.getLogger('passlib').setLevel(logging.ERROR)
 config = load_config()
 
 
-def _save_config():
-    try:
-        with open(CONFIG_PATH, 'w', encoding='utf-8') as configfile:
-            config.write(configfile)
-    except Exception as e:
-        print(f"Error saving config file: {e}")
-
-
-def _is_domain_valid(domain: str) -> bool:
-    return validators.domain(domain)
-
-
 def _is_no_users():
     userlist = session.query(Users.username).all()
     if len(userlist) == 0:
         return True
     return False
-
-
-def _domain_selection(unattended: bool = False):
-    if unattended:
-        config.set('SERVER', 'DOMAIN', 'yourmancaveman.domain.com')
-        _save_config()
-        return None
-    while True:
-        domain = input(
-            'Enter your application domain name. This is equired for password reset emails\n'
-            'Enter domain name: ').strip()
-        if _is_domain_valid(domain):
-            config.set('SERVER', 'DOMAIN', domain)
-            _save_config()
-            return None
-        else:
-            print('ERROR: Invalid domain name. Please try again.')
-
-
-def _set_smtp_config(unattended: bool = False):
-    if unattended:
-        print('WARNING: Password reset emails will NOT be sent. See config.ini!')
-        config.set('EMAIL', 'ENABLED', 'False')
-        _save_config()
-        return None
-
-    while True:
-        gmail_user = input('Please enter your gmail username (without @gmail.com): ').strip()
-        if '@' in gmail_user.lower():
-            print('ERROR: Please enter your gmail account name without the @gmail.com part')
-        else:
-            config.set('EMAIL', 'USERNAME', gmail_user.lower())
-            _save_config()
-            break
-
-    while True:
-        gmail_app_pass = input('Please enter your gmail app password (abcd abcd abcd abcd): ').lower().strip()
-        # I'm not sure if this is always the case. I created a few and turned out all same but who knows.
-        app_pw_pattern = re.compile(r'[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}')
-        if not app_pw_pattern.fullmatch(gmail_app_pass):
-            print(
-                'ERROR: Invalid app password. It should look like "abcd abcd abcd abcd". Please try again'
-            )
-        else:
-            config.set('EMAIL', 'APP_PASSWORD', gmail_app_pass)
-            config.set('EMAIL', 'ENABLED', 'True')
-            _save_config()
-            return None
 
 
 def _create_admin_user():
