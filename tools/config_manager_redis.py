@@ -1,6 +1,27 @@
+import re
 import secrets
 
+import validators
+
 from database import get_redis_connection, close_redis_connection
+
+
+def is_hostname_valid(host_name: str) -> bool:
+    return validators.domain(host_name)
+
+
+def email_to_username(email_address: str):
+    username = email_address.strip().lower().split('@')
+    return username[0]
+
+
+def is_app_passwd_valid(app_passwd: str) -> bool:
+    """
+    Validates a gmail app password.
+    """
+    app_pw_pattern = re.compile(r'[a-z]{4} [a-z]{4} [a-z]{4} [a-z]{4}')
+    app_pw_stripped = app_passwd.strip().lower()
+    return bool(app_pw_pattern.fullmatch(app_pw_stripped))
 
 
 async def health_check_keygen():
@@ -40,8 +61,9 @@ async def get_email_credentials():
 
 async def set_email_credentials(username, password, enabled=True):
     redis = await get_redis_connection()
+    username = email_to_username(username)
     try:
-        await redis.set('email:enabled', enabled)
+        await redis.set('email:enabled', int(enabled))
         await redis.set('email:username', username)
         await redis.set('email:password', password)
     finally:
@@ -55,4 +77,7 @@ async def get_hostname():
 
 async def set_hostname(host_name):
     redis = await get_redis_connection()
-    await redis.set('server:hostname', host_name)
+    try:
+        await redis.set('server:hostname', host_name)
+    finally:
+        await close_redis_connection(redis)
