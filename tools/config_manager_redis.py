@@ -27,7 +27,6 @@ async def get_health_check_key():
         await close_redis_connection(redis)
 
 
-# For Email Credentials
 async def get_email_credentials(redis):
     enabled = await redis.get('email:enabled')
     if enabled == 'False':

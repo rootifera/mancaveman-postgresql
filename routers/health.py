@@ -20,7 +20,10 @@ router = APIRouter(
             dependencies=[Depends(RateLimiter(times=3, seconds=60))])
 async def health_check(db: db_dependency, key=None):
     health_key = await get_health_check_key()
-    if key == health_key:
+
+    if key == '' or key is None:
+        return {'ERROR': 'Missing key'}
+    elif key == health_key:
         pg_health = postgres_health_check(db)
         cpu = check_cpu()
         mem = check_memory()
@@ -32,10 +35,8 @@ async def health_check(db: db_dependency, key=None):
         finally:
             if redis:
                 await close_redis_connection(redis)
-    elif key == '' or key is None:
-        return {'ERROR': 'Missing key'}
     else:
-        return {'ERROR': 'Invalid key. Please create a key from the keygen endpoint'}
+        return {'ERROR': 'Invalid key'}
 
 
 @router.get('/keygen', status_code=status.HTTP_200_OK)
