@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 
-from tools.config_manager_redis import get_email_credentials, get_domain_name
+from tools.config_manager_redis import get_email_credentials, get_hostname
 
 
 def send_pw_reset_email(receiver: str, token: str):
@@ -9,11 +9,11 @@ def send_pw_reset_email(receiver: str, token: str):
         return {'ERROR': 'Email credentials are not set'}
 
     user, pw = get_email_credentials()
-    domain_name = get_domain_name()
+    hostname = get_hostname()
     from_address = user + '@gmail.com'
     to_address = receiver
 
-    reset_link = 'https://' + domain_name + '/forgot-password'
+    reset_link = 'https://' + hostname + '/forgot-password'
 
     plain_text = f"""\
     Please use the following link to reset your password:

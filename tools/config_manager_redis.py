@@ -27,7 +27,8 @@ async def get_health_check_key():
         await close_redis_connection(redis)
 
 
-async def get_email_credentials(redis):
+async def get_email_credentials():
+    redis = await get_redis_connection()
     enabled = await redis.get('email:enabled')
     if enabled == 'False':
         return False
@@ -37,16 +38,21 @@ async def get_email_credentials(redis):
         return username, password
 
 
-async def set_email_credentials(redis, enabled, username, password):
-    await redis.set('email:enabled', enabled)
-    await redis.set('email:username', username)
-    await redis.set('email:password', password)
+async def set_email_credentials(username, password, enabled=True):
+    redis = await get_redis_connection()
+    try:
+        await redis.set('email:enabled', enabled)
+        await redis.set('email:username', username)
+        await redis.set('email:password', password)
+    finally:
+        await close_redis_connection(redis)
 
 
-# For Domain Name
-async def get_domain_name(redis):
-    return await redis.get('server:domain')
+async def get_hostname():
+    redis = await get_redis_connection()
+    return await redis.get('server:hostname')
 
 
-async def set_domain_name(redis, domain_name):
-    await redis.set('server:domain', domain_name)
+async def set_hostname(host_name):
+    redis = await get_redis_connection()
+    await redis.set('server:hostname', host_name)

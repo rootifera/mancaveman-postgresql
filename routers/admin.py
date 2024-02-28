@@ -11,6 +11,7 @@ from dependencies import db_dependency, user_dependency, bcrypt_context
 from models import CreateUserRequest, Users, Hardware, Software
 from tools import actionlog
 from tools.common import validate_admin
+from tools.config_manager_redis import get_hostname, get_email_credentials, get_health_check_key
 from .auth import is_unique_username_and_email
 
 router = APIRouter(
@@ -113,3 +114,14 @@ async def cleanup_orphaned_files(db: db_dependency, user: user_dependency):
     actionlog.add_log("Cleanup Orphaned Files", f"Deleted {len(orphaned_files)} orphaned files", "System")
 
     return {"orphaned_files": list(orphaned_files), "deleted_files": deleted_files}
+
+
+@router.get("/get_server_config")
+async def get_server_config(user: user_dependency):
+    validate_admin(user)
+    email_user, _ = await get_email_credentials()
+    host_name = await get_hostname()
+    health_key = await get_health_check_key()
+
+    return {"gmail_username": email_user, "hostname": host_name, "health_check_key": health_key}
+
