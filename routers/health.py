@@ -5,8 +5,8 @@ from starlette.exceptions import HTTPException
 
 from database import get_redis_connection, close_redis_connection
 from dependencies import db_dependency, user_dependency
-from tools.common import validate_user, validate_admin
-from tools.config_manager import get_health_check_key, health_check_keygen
+from tools.common import validate_admin
+from tools.config_manager_redis import get_health_check_key, health_check_keygen
 from tools.health_benchmark import postgres_health_check, redis_health_check, check_cpu, check_memory, vacuum_db, \
     analyze_db, reindex_db
 
@@ -19,32 +19,33 @@ router = APIRouter(
 @router.get("/status", status_code=status.HTTP_200_OK,
             dependencies=[Depends(RateLimiter(times=3, seconds=60))])
 async def health_check(db: db_dependency, key=None):
-    config_key = get_health_check_key()
-    if key == config_key:
-        pg_health = postgres_health_check(db)  # Ensure this is not an async function or properly awaited
+    health_key = await get_health_check_key()
+
+    if key == '' or key is None:
+        return {'ERROR': 'Missing key'}
+    elif key == health_key:
+        pg_health = postgres_health_check(db)
         cpu = check_cpu()
         mem = check_memory()
 
         redis = await get_redis_connection()
         try:
-            rd_health = await redis_health_check(redis)  # Properly await this async function
+            rd_health = await redis_health_check(redis)
             return {'health': [pg_health, rd_health, cpu, mem]}
         finally:
             if redis:
                 await close_redis_connection(redis)
-    elif key == '' or key is None:
-        return {'ERROR': 'Missing key'}
     else:
-        return {'ERROR': 'Invalid key. Please create a key from the keygen endpoint'}
+        return {'ERROR': 'Invalid key'}
 
 
 @router.get('/keygen', status_code=status.HTTP_200_OK)
 async def keygen(user: user_dependency):
-    if validate_user(user) and validate_admin(user):
-        health_check_keygen()
-        new_key = get_health_check_key()
+    if validate_admin(user):
+        await health_check_keygen()
+        new_key = await get_health_check_key()
         return {'key': new_key,
-                'detail': 'Please save your key. If you lose your it, you can always generate a new one'}
+                'detail': 'Please save your key. If you lose it, you can always generate a new one'}
     else:
         raise HTTPException(status_code=401, detail="Not authenticated or user is not in admin group")
 
