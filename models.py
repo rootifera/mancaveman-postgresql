@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY
 
 from database import Base
 
@@ -273,12 +274,12 @@ class Books(Base):
     isbn_13 = Column(String, nullable=True)
     title = Column(String)
     subtitle = Column(String, nullable=True)
-    author = Column(String)  # authors, list
+    author = Column(ARRAY(String))
     publisher = Column(String)
     published_date = Column(String)
     description = Column(String, nullable=True)
-    category = Column(String, nullable=True)  # categories, list
-    print_type = Column(String, nullable=True)  # book, epub, pdf etc
+    category = Column(ARRAY(String))
+    print_type = Column(String, nullable=True)
     maturity_rating = Column(String, nullable=True)
     condition = Column(String, nullable=True)
     location = Column(String, nullable=True)
@@ -287,11 +288,11 @@ class Books(Base):
 class BookRequest(BaseModel):
     title: str
     subtitle: Optional[str] = ''
-    author: str
+    author: List[str]
     publisher: str
     published_date: str
     description: Optional[str] = ''
-    category: Optional[str] = ''
+    category: List[str] = []
     print_type: Optional[str] = ''
     maturity_rating: Optional[str] = ''
     condition: Optional[str] = ''

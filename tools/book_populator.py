@@ -1,7 +1,7 @@
 import requests
 
 
-def get_book_info(isbn, api_key=None):
+async def get_book_info(isbn, api_key=None):
     base_url = "https://www.googleapis.com/books/v1/volumes"
 
     params = {"q": f"isbn:{isbn}"}
@@ -28,11 +28,11 @@ def get_book_info(isbn, api_key=None):
 
             this_book.update({'title': volume_info.get('title', '')})
             this_book.update({'subtitle': volume_info.get('subtitle', '')})
-            this_book.update({'author': volume_info.get('authors', [''])[0]})  # temporary
+            this_book.update({'author': volume_info.get('authors', [])})
             this_book.update({'publisher': volume_info.get('publisher', '')})
             this_book.update({'published_date': volume_info.get('publishedDate', '')})
             this_book.update({'description': volume_info.get('description', '')})
-            this_book.update({'category': volume_info.get('categories', [''])[0]})  # temporary
+            this_book.update({'category': volume_info.get('categories', [])})
             this_book.update({'print_type': volume_info.get('printType', '')})
             this_book.update({'maturity_rating': volume_info.get('maturityRating', '')})
 

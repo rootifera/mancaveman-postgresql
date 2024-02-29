@@ -1,12 +1,13 @@
 """Books Module"""
 
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import and_
 from sqlalchemy import func
 from starlette import status
 
-from definitions import DESC_FUZZY
 from dependencies import db_dependency, user_dependency
 from models import Users, Books, BookRequest
 from tools import actionlog
@@ -33,117 +34,160 @@ async def get_by_id(db: db_dependency, user: user_dependency, id: str):
 
 @router.get("/get_by_title/{title}", status_code=status.HTTP_200_OK)
 async def get_by_title(user: user_dependency, db: db_dependency, title: str,
-                       fuzzy: bool = Query(False, description=DESC_FUZZY)):
+                       exact_match: bool = Query(False, description="Search for books by an exact title match.")):
     validate_user(user)
-    if fuzzy:
-        return db.query(Books).filter(Books.title.ilike(f"%{title}%")).all()
+
+    if exact_match:
+        books = db.query(Books).filter(Books.title == title).all()
     else:
-        return db.query(Books).filter(Books.title == title).all()
+        books = db.query(Books).filter(Books.title.ilike(f"%{title}%")).all()
+
+    if not books:
+        raise HTTPException(status_code=404, detail="No books found with the given title.")
+
+    return books
 
 
 @router.get("/get_by_author/{author}", status_code=status.HTTP_200_OK)
 async def get_by_author(user: user_dependency, db: db_dependency, author: str,
-                        fuzzy: bool = Query(False, description=DESC_FUZZY)):
+                        exact_match: bool = Query(False, description="Search for books by an exact author match.")):
     validate_user(user)
-    if fuzzy:
-        return db.query(Books).filter(Books.author.ilike(f"%{author}%")).all()
+
+    if exact_match:
+        books = db.query(Books).filter(Books.author.contains([author])).all()
     else:
-        return db.query(Books).filter(Books.author == author).all()
+        books = db.query(Books).all()  # I know it's a bad and lazy idea. Sorry
+        books = [book for book in books if any(author.lower() in auth.lower() for auth in book.author)]
+
+    if not books:
+        raise HTTPException(status_code=404, detail="No books found for the given author.")
+
+    return books
 
 
 @router.get("/get_by_publisher/{publisher}", status_code=status.HTTP_200_OK)
 async def get_by_publisher(user: user_dependency, db: db_dependency, publisher: str,
-                           fuzzy: bool = Query(False, description=DESC_FUZZY)):
+                           exact_match: bool = Query(False,
+                                                     description="Search for books by an exact publisher match.")):
     validate_user(user)
-    if fuzzy:
-        return db.query(Books).filter(Books.publisher.ilike(f"%{publisher}%")).all()
+
+    if exact_match:
+        books = db.query(Books).filter(Books.publisher == publisher).all()
     else:
-        return db.query(Books).filter(Books.publisher == publisher).all()
+        books = db.query(Books).filter(Books.publisher.ilike(f"%{publisher}%")).all()
+
+    if not books:
+        raise HTTPException(status_code=404, detail="No books found with the given publisher.")
+
+    return books
 
 
 @router.get("/get_by_category/{category}", status_code=status.HTTP_200_OK)
 async def get_by_category(user: user_dependency, db: db_dependency, category: str,
-                          fuzzy: bool = Query(False, description=DESC_FUZZY)):
+                          exact_match: bool = Query(False, description="Search for books by an exact category match.")):
     validate_user(user)
-    if fuzzy:
-        return db.query(Books).filter(Books.category.ilike(f"%{category}%")).all()
-    else:
-        return db.query(Books).filter(Books.category == category).all()
 
-
-@router.get("/get_by_print_type/{print_type}", status_code=status.HTTP_200_OK)
-async def get_by_publisher(user: user_dependency, db: db_dependency, print_type: str,
-                           fuzzy: bool = Query(False, description=DESC_FUZZY)):
-    validate_user(user)
-    if fuzzy:
-        return db.query(Books).filter(Books.print_type.ilike(f"%{print_type}%")).all()
+    books = db.query(Books).all()
+    if exact_match:
+        filtered_books = [book for book in books if category in book.category]
     else:
-        return db.query(Books).filter(Books.print_type == print_type).all()
+        filtered_books = [book for book in books if
+                          any(cat.lower().find(category.lower()) != -1 for cat in book.category)]
+
+    if not filtered_books:
+        raise HTTPException(status_code=404, detail="No books found for the given category.")
+
+    return filtered_books
 
 
 @router.get("/get_by_print_type/{print_type}", status_code=status.HTTP_200_OK)
 async def get_by_print_type(user: user_dependency, db: db_dependency, print_type: str,
-                            fuzzy: bool = Query(False, description=DESC_FUZZY)):
+                            exact_match: bool = Query(False,
+                                                      description="Search for books by an exact print type match.")):
     validate_user(user)
-    if fuzzy:
-        return db.query(Books).filter(Books.print_type.ilike(f"%{print_type}%")).all()
+
+    if exact_match:
+        books = db.query(Books).filter(Books.print_type == print_type).all()
     else:
-        return db.query(Books).filter(Books.print_type == print_type).all()
+        books = db.query(Books).filter(Books.print_type.ilike(f"%{print_type}%")).all()
+
+    if not books:
+        raise HTTPException(status_code=404, detail="No books found with the given print type.")
+
+    return books
+
+
+@router.get("/get_by_print_type/{print_type}", status_code=status.HTTP_200_OK)
+async def get_by_print_type(user: user_dependency, db: db_dependency, print_type: str,
+                            exact_match: bool = Query(False,
+                                                      description="Search for books by an exact print type match.")):
+    validate_user(user)
+
+    if exact_match:
+        books = db.query(Books).filter(Books.print_type == print_type).all()
+    else:
+        books = db.query(Books).filter(Books.print_type.ilike(f"%{print_type}%")).all()
+
+    if not books:
+        raise HTTPException(status_code=404, detail="No books found with the specified print type.")
+
+    return books
 
 
 @router.get("/get_by_isbn/{isbn}", status_code=status.HTTP_200_OK)
 async def get_by_isbn(db: db_dependency, user: user_dependency, isbn: str):
     validate_user(user)
 
-    if len(isbn) != 10 and len(isbn) != 13:
-        raise HTTPException(status_code=400, detail="Invalid ISBN format")
+    if len(isbn) not in [10, 13]:
+        raise HTTPException(status_code=400, detail="Invalid ISBN format. ISBN must be either 10 or 13 digits long.")
 
-    if len(isbn) == 10:
-        result = db.query(Books).filter(Books.isbn_10 == isbn).first()
-        if result is not None:
-            return result
-        else:
-            raise HTTPException(status_code=404, detail="Book not found")
-    if len(isbn) == 13:
-        result = db.query(Books).filter(Books.isbn_13 == isbn).first()
-        if result is not None:
-            return result
-        else:
-            raise HTTPException(status_code=404, detail="Book not found")
+    isbn_field = Books.isbn_10 if len(isbn) == 10 else Books.isbn_13
+    result = db.query(Books).filter(isbn_field == isbn).first()
+
+    if result:
+        return result
+    else:
+        raise HTTPException(status_code=404, detail="Book not found with the provided ISBN.")
 
 
 @router.get("/search/")
 async def book_search(
         db: db_dependency,
         user: user_dependency,
-        title: str = None,
-        author: str = None,
-        publisher: str = None,
-        category: str = None,
-        print_type: str = None,
-        maturity_rating: str = None,
+        title: Optional[str] = None,
+        author: Optional[str] = None,
+        publisher: Optional[str] = None,
+        category: Optional[str] = None,
+        print_type: Optional[str] = None,
+        maturity_rating: Optional[str] = None,
         limit: int = Query(100, description="Limit the number of results", le=1000)
 ):
     validate_user(user)
-    # if no search parameters given, it will return 10 most recent hardware
-    if all(hw is None for hw in [title, author, publisher, category, print_type, maturity_rating]):
+
+    if all(param is None for param in [title, author, publisher, category, print_type, maturity_rating]):
         return db.query(Books).order_by(Books.id.desc()).limit(10).all()
 
     filters = []
     if title:
-        filters.append(func.lower(Books.title).ilike(f"%{title.lower()}%"))
+        filters.append(func.lower(Books.title).ilike(f"%{func.lower(title)}%"))
     if author:
-        filters.append(func.lower(Books.author).ilike(f"%{author.lower()}%"))
+        filters.append(Books.author.any(func.lower(author)))
     if publisher:
-        filters.append(func.lower(Books.publisher).ilike(f"%{publisher.lower()}%"))
+        filters.append(func.lower(Books.publisher).ilike(f"%{func.lower(publisher)}%"))
     if category:
-        filters.append(func.lower(Books.category).ilike(f"%{category.lower()}%"))
+        filters.append(Books.category.any(func.lower(category)))
     if maturity_rating:
-        filters.append(func.lower(Books.maturity_rating).ilike(f"%{maturity_rating.lower()}%"))
+        filters.append(func.lower(Books.maturity_rating).ilike(f"%{func.lower(maturity_rating)}%"))
     if print_type:
-        filters.append(func.lower(Books.print_type).ilike(f"%{print_type.lower()}%"))
+        filters.append(func.lower(Books.print_type).ilike(f"%{func.lower(print_type)}%"))
 
-    return db.query(Books).filter(*filters).limit(limit).all()
+    query = db.query(Books).filter(and_(*filters)).limit(limit)
+
+    results = query.all()
+    if not results:
+        raise HTTPException(status_code=404, detail="No books found matching the search criteria.")
+
+    return results
 
 
 @router.get('/autofill')
@@ -154,69 +198,60 @@ async def autofill(user: user_dependency, db: db_dependency, isbn: str):
     api_key = current_user.books_api_key
 
     if api_key == 'NOKEY':
-        return get_book_info(isbn)
+        return await get_book_info(isbn)
     else:
-        return get_book_info(isbn, api_key)
+        return await get_book_info(isbn, api_key)
 
 
 @router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_book(user: user_dependency, db: db_dependency, book_request: BookRequest):
-    validate_user(user)
     validate_admin(user)
 
-    log_data = book_request.model_dump()
-    book_model = Books(**book_request.model_dump())
-    db.add(book_model)
-    db.commit()
-    actionlog.add_log("New book", "{} added at {}".format(log_data['title'],
-                                                          datetime.now().strftime("%H:%M:%S")),
-                      user.get('username'))
-    return None
+    try:
+        book_model = Books(**book_request.dict())
+        db.add(book_model)
+        db.commit()
+        actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}",
+                          user.get('username'))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error adding book: {str(e)}")
+    return {"message": "Book added successfully"}
 
 
 @router.put("/update/{book_id}", status_code=status.HTTP_202_ACCEPTED)
-async def update_software(user: user_dependency, db: db_dependency, book_request: BookRequest,
-                          book_id: int):
-    validate_user(user)
+async def update_book(user: user_dependency, db: db_dependency,
+                      book_request: BookRequest, book_id: int):
     validate_admin(user)
 
     book_model = db.query(Books).filter(Books.id == book_id).first()
 
-    if book_model is None:
-        raise HTTPException(status_code=404, detail="Not found")
+    if not book_model:
+        raise HTTPException(status_code=404, detail="Book not found")
 
-    book_model.title = book_request.title
-    book_model.subtitle = book_request.subtitle
-    book_model.author = book_request.author
-    book_model.publisher = book_request.publisher
-    book_model.published_date = book_request.published_date
-    book_model.description = book_request.description
-    book_model.category = book_request.category
-    book_model.print_type = book_request.print_type
-    book_model.maturity_rating = book_request.maturity_rating
-    book_model.condition = book_request.condition
-    book_model.location = book_request.location
-    book_model.isbn_10 = book_request.isbn_10
-    book_model.isbn_13 = book_request.isbn_13
+    for var, value in vars(book_request).items():
+        setattr(book_model, var, value) if value else None
 
-    db.add(book_model)
-    db.commit()
+    try:
+        db.commit()
+        return {"message": f"Book with ID {book_id} updated successfully."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred while updating the book: {e}")
 
 
 @router.delete("/delete/{book_id}", status_code=status.HTTP_202_ACCEPTED)
-async def delete_software(user: user_dependency, db: db_dependency, book_id: int):
-    validate_user(user)
+async def delete_book(user: user_dependency, db: db_dependency, book_id: int):
     validate_admin(user)
 
-    book_model = db.query(Books).filter(Books.id == book_id).first()
+    deleted = db.query(Books).filter(Books.id == book_id).delete()
+    if not deleted:
+        db.rollback()
+        raise HTTPException(status_code=404, detail="Book not found")
 
-    if book_model is None:
-        raise HTTPException(status_code=404, detail='Not Found')
-    db.query(Books).filter(Books.id == book_id).delete()
     db.commit()
 
-    actionlog.add_log("Book deleted",
-                      "{} deleted at {}".format(book_model.name,
-                                                datetime.now().strftime("%H:%M:%S")), user.get('username'))
+    actionlog.add_log("Book deleted", f"Book with ID {book_id} deleted at {datetime.now().strftime('%H:%M:%S')}",
+                      user.get('username'))
 
-    return status.HTTP_200_OK
+    return {"message": "Book deleted successfully."}
