@@ -54,5 +54,6 @@ VALUES ('Ammeter', 8),
        ('Vector Network Analyzer (VNA)', 8),
        ('Vector Signal Generator', 8),
        ('Vibration Meter', 8),
-       ('Voltmeter', 8) ON CONFLICT
+       ('Voltmeter', 8)
+ON CONFLICT
     DO NOTHING;

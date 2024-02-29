@@ -200,5 +200,6 @@ VALUES ('80 PLUS Bronze PSUs', 6),
        ('Wireless Charging Stand', 6),
        ('Wireless Keyboard and Mouse Combo', 6),
        ('Wireless Keyboard', 6),
-       ('Wireless Mouse', 6) ON CONFLICT
+       ('Wireless Mouse', 6)
+ON CONFLICT
     DO NOTHING;

@@ -43,5 +43,6 @@ VALUES ('Acrylic Paint', 11),
        ('Wire for Jewelry Making', 11),
        ('Wood Carving Tools', 11),
        ('Wool Roving', 11),
-       ('Yarn', 11) ON CONFLICT
+       ('Yarn', 11)
+ON CONFLICT
     DO NOTHING;

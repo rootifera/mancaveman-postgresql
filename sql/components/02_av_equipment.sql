@@ -99,5 +99,6 @@ VALUES ('3.5mm Audio Cable', 2),
        ('USB Sound Card', 2),
        ('Wireless Headphone Transmitter', 2),
        ('Wireless Surround Sound System', 2),
-       ('XLR Cable', 2) ON CONFLICT
+       ('XLR Cable', 2)
+ON CONFLICT
     DO NOTHING;

@@ -59,5 +59,6 @@ VALUES ('Archery Bow', 20),
        ('Volleyball', 20),
        ('Weightlifting Equipment', 20),
        ('Windsurfing Equipment', 20),
-       ('Yoga Mat', 20) ON CONFLICT
+       ('Yoga Mat', 20)
+ON CONFLICT
     DO NOTHING;

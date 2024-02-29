@@ -48,5 +48,6 @@ VALUES ('Air Filter', 3),
        ('Steering Wheel Cover', 3),
        ('Tire Chains', 3),
        ('Trailer Hitch', 3),
-       ('Windshield Wipers', 3) ON CONFLICT
+       ('Windshield Wipers', 3)
+ON CONFLICT
     DO NOTHING;

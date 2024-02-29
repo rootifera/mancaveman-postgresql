@@ -38,5 +38,6 @@ VALUES ('Air Compressor', 19),
        ('Track Saw', 19),
        ('Welding Machine', 19),
        ('Wood Lathe', 19),
-       ('Workbench', 19) ON CONFLICT
+       ('Workbench', 19)
+ON CONFLICT
     DO NOTHING;
