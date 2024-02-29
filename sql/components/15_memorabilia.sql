@@ -28,5 +28,6 @@ VALUES ('Autographed Items', 15),
        ('Vinyl Records', 15),
        ('Vintage Advertising Items', 15),
        ('Vintage Toys', 15),
-       ('War Memorabilia', 15) ON CONFLICT
+       ('War Memorabilia', 15)
+ON CONFLICT
     DO NOTHING;

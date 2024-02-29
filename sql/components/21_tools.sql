@@ -37,5 +37,6 @@ VALUES ('Adjustable Wrench', 21),
        ('Wire Strippers', 21),
        ('Wood Plane', 21),
        ('Wooden Mallet', 21),
-       ('Wrench Set', 21) ON CONFLICT
+       ('Wrench Set', 21)
+ON CONFLICT
     DO NOTHING;

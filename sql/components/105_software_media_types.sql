@@ -16,5 +16,6 @@ VALUES ('Blu-ray Disc'),
        ('ROM Chip'),
        ('SD Card'),
        ('Streaming'),
-       ('USB Flash Drive') ON CONFLICT
+       ('USB Flash Drive')
+ON CONFLICT
     DO NOTHING;

@@ -47,5 +47,6 @@ VALUES ('Action Figures', 5),
        ('Vintage Vinyl Records', 5),
        ('Vinyl Records', 5),
        ('Warhammer Miniatures', 5),
-       ('Watches and Timepieces', 5) ON CONFLICT
+       ('Watches and Timepieces', 5)
+ON CONFLICT
     DO NOTHING;

@@ -108,5 +108,6 @@ VALUES ('7 Wonders', 4),
        ('Uno: Uno: Harry Potter Edition', 4),
        ('Uno: Uno: Marvel Edition', 4),
        ('Uno: Uno: The Mandalorian Edition', 4),
-       ('Uno: Uno: WWE Edition', 4) ON CONFLICT
+       ('Uno: Uno: WWE Edition', 4)
+ON CONFLICT
     DO NOTHING;

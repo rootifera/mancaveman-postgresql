@@ -42,5 +42,6 @@ VALUES ('Backpack', 18),
        ('Waterproof Camera', 18),
        ('Weather Station', 18),
        ('Wildlife Camera', 18),
-       ('Windbreaker Jacket', 18) ON CONFLICT
+       ('Windbreaker Jacket', 18)
+ON CONFLICT
     DO NOTHING;

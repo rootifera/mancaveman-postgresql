@@ -17,5 +17,6 @@ VALUES ('Antivirus Software'),
        ('Security Software'),
        ('Simulation Software'),
        ('Utility Software'),
-       ('Video Editing Software') ON CONFLICT
+       ('Video Editing Software')
+ON CONFLICT
     DO NOTHING;

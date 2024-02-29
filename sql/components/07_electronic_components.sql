@@ -275,5 +275,6 @@ VALUES ('Accelerometers', 7),
        ('Zigbee Adapters', 7),
        ('Zigbee Controllers', 7),
        ('Zigbee Modules', 7),
-       ('Zigbee Transceivers', 7) ON CONFLICT
+       ('Zigbee Transceivers', 7)
+ON CONFLICT
     DO NOTHING;

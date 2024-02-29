@@ -38,5 +38,6 @@ VALUES ('Arcade Stick', 9),
        ('VMU (Visual Memory Unit)', 9),
        ('Wired Controller', 9),
        ('Wireless Controller', 9),
-       ('Zapper Gun', 9) ON CONFLICT
+       ('Zapper Gun', 9)
+ON CONFLICT
     DO NOTHING;
