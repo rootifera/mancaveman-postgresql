@@ -1,52 +1,60 @@
 #!/bin/bash
 
-# environment options: 'live', 'dev', 'dev-nobuild', 'live-nobuild'
-version="0.1.0"
-environment="dev"
-buildname="Nick Virago"
-
-# Function to display usage information
 usage() {
-    echo "Usage: $0 [-v version] [-e environment]"
-    echo "  -v version: Specify the version (default: $version)"
-    echo "  -e environment: Specify the environment (live, dev, dev-nobuild, live-nobuild)"
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  --version VERSION         Set the version."
+    echo "  --build_name BUILD_NAME   Set the build name."
+    echo "  --build_number NUMBER     Set the build number."
+    echo "  --version_file FILE       Set the version file."
+    echo "  --push                    Push the Docker image."
+    exit 1
 }
 
-# Function to handle version generation and Docker operations
-handle_build() {
-    local env_version=$1
-    local docker_tag=$2
-    local should_build=$3
-
-    echo "Building $env_version..."
-    python -c "from tools.common import version_generator; version_generator('$env_version', '$buildname', 'version.json')"
-
-    if [ "$should_build" == "yes" ]; then
-        docker build -t rootifera/mancaveman:$docker_tag .
-        docker login
-        docker push rootifera/mancaveman:$docker_tag
+for cmd in jq docker python; do
+    if ! command -v $cmd &> /dev/null; then
+        echo "Error: $cmd is required but not installed." >&2
+        exit 1
     fi
-}
-
-# Parsing command-line options
-while getopts ":v:e:h" opt; do
-  case $opt in
-    v) version="$OPTARG" ;;
-    e) environment="$OPTARG" ;;
-    h) usage; exit 0 ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2; usage; exit 1 ;;
-    :)
-      echo "Option -$OPTARG requires an argument." >&2; usage; exit 1 ;;
-  esac
 done
 
-# Handling different environments
-case $environment in
-    "live") handle_build "$version" "latest" "yes" ;;
-    "dev") handle_build "$version-dev" "dev" "yes" ;;
-    "dev-nobuild") handle_build "$version-dev" "dev" "no" ;;
-    "live-nobuild") handle_build "$version" "latest" "no" ;;
-    *)
-        echo "Unknown environment: $environment" >&2; usage; exit 1 ;;
-esac
+version="0.1.1"
+build_name="Salvador Limones"
+version_file="version.json"
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --version) version="$2"; shift 2 ;;
+        --build_name) build_name="$2"; shift 2 ;;
+        --build_number) build_number="$2"; shift 2 ;;
+        --version_file) version_file="$2"; shift 2 ;;
+        --push) push=true; shift ;;
+        *) echo "Unknown option: $1" >&2; usage ;;
+    esac
+done
+
+if [[ -z "$build_number" ]]; then
+    build_number=$(jq -r '.mancave[0].buildNumber' "$version_file")
+    if ! [[ $build_number =~ ^[0-9]+$ ]]; then
+        echo "Error: Failed to parse build number from $version_file" >&2
+        exit 1
+    fi
+    ((build_number++))
+fi
+
+if ! python -c "from tools.common import version_generator; version_generator('$version', '$build_name', '$build_number', '$version_file')"; then
+    echo "Error: Failed to update version file." >&2
+    exit 1
+fi
+
+if ! docker compose build; then
+    echo "Error: Docker build failed." >&2
+    exit 1
+fi
+
+if [[ "$push" == true ]]; then
+    if ! docker push rootifera/mancaveman:psql; then
+        echo "Error: Docker push failed." >&2
+        exit 1
+    fi
+fi

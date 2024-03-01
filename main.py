@@ -66,7 +66,8 @@ async def root():
         'database': ver_info["mancave"][0]["database"],
         "buildDate": ver_info["mancave"][0]["buildDate"],
         "buildName": ver_info["mancave"][0]["buildName"],
-        "buildID": ver_info["mancave"][0]["buildID"]
+        "buildID": ver_info["mancave"][0]["buildID"],
+        "buildNumber": ver_info["mancave"][0]["buildNumber"]
     }
 
 

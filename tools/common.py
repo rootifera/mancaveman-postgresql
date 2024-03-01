@@ -29,7 +29,7 @@ def randomize_filename(file_to_rename: str, filename_length: int = 16):
     return f"{random_name}.{file_extension}"
 
 
-def version_generator(version: str, buildname: str, version_file):
+def version_generator(version: str, buildname: str, buildnumber: str,  version_file):
     with open(version_file, 'r') as f:
         ver = json.load(f)
 
@@ -37,6 +37,7 @@ def version_generator(version: str, buildname: str, version_file):
     ver['mancave'][0]['buildName'] = buildname
     ver['mancave'][0]['buildDate'] = datetime.today().strftime('%Y-%m-%d')
     ver['mancave'][0]['buildID'] = secrets.token_hex(12)
+    ver['mancave'][0]['buildNumber'] = buildnumber
 
     with open(version_file, 'w') as f:
         json.dump(ver, f, indent=2)
