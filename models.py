@@ -3,9 +3,9 @@ from typing import Optional, List
 
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import UniqueConstraint
-from sqlalchemy.dialects.postgresql import ARRAY
 
 from database import Base
 
@@ -274,7 +274,7 @@ class Books(Base):
     isbn_13 = Column(String, nullable=True)
     title = Column(String)
     subtitle = Column(String, nullable=True)
-    author = Column(ARRAY(String))
+    authors = relationship('BookAuthorAssociation', back_populates='book')
     publisher = Column(String)
     published_date = Column(String)
     description = Column(String, nullable=True)
@@ -299,3 +299,18 @@ class BookRequest(BaseModel):
     location: str
     isbn_10: Optional[str] = ''
     isbn_13: Optional[str] = ''
+
+
+class BookAuthorAssociation(Base):
+    __tablename__ = 'book_author_association'
+    book_id = Column(Integer, ForeignKey('books.id'), primary_key=True)
+    book_author_id = Column(Integer, ForeignKey('book_author.id'), primary_key=True)
+    book = relationship('Books', back_populates='authors')
+    author = relationship('BookAuthor', back_populates='books')
+
+
+class BookAuthor(Base):
+    __tablename__ = 'book_author'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    books = relationship('BookAuthorAssociation', back_populates='author')

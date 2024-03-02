@@ -7,8 +7,8 @@ RED='\033[0;31m'
 NC='\033[0m' # No Colour
 
 print_color() {
-    COLOR="$1"
-    TEXT="$2"
+    local COLOR="$1"
+    local TEXT="$2"
     echo -e "${COLOR}${TEXT}${NC}"
 }
 
@@ -16,22 +16,25 @@ print_separator() {
     print_color "$BLUE" "===================================================="
 }
 
+# Generate random number using /dev/urandom
 generate_random_number() {
-    echo $((100000 + RANDOM % 900000))
+    echo $((100000 + $(head -c 4 /dev/urandom | od -A n -t u4) % 900000))
 }
 
 perform_wipe() {
     print_color "$YELLOW" "This action will delete all the data."
     print_separator
 
+    local rand_num
     rand_num=$(generate_random_number)
     print_color "$GREEN" "Generated number: $rand_num"
 
+    local user_input
     print_color "$YELLOW" "Enter the above 6-digit number to confirm: "
-    read user_input
+    read -r user_input
 
     if [ "$user_input" = "$rand_num" ]; then
-        print_color "$RED" "Last Warning: CTRL+C to quit"
+        print_color "$RED" "Last Warning: Press CTRL+C to quit within 5 seconds"
         sleep 5
 
         docker compose down --rmi all --volumes
