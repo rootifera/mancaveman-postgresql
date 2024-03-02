@@ -3,7 +3,6 @@ from typing import Optional, List
 
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import UniqueConstraint
 
@@ -278,7 +277,7 @@ class Books(Base):
     publisher = Column(String)
     published_date = Column(String)
     description = Column(String, nullable=True)
-    category = Column(ARRAY(String))
+    categories = relationship('BookCategoryAssociation', back_populates='book')
     print_type = Column(String, nullable=True)
     maturity_rating = Column(String, nullable=True)
     condition = Column(String, nullable=True)
@@ -314,3 +313,18 @@ class BookAuthor(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False, unique=True)
     books = relationship('BookAuthorAssociation', back_populates='author')
+
+
+class BookCategory(Base):
+    __tablename__ = 'book_category'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, unique=True)
+    books = relationship('BookCategoryAssociation', back_populates='category')
+
+
+class BookCategoryAssociation(Base):
+    __tablename__ = 'book_category_association'
+    book_id = Column(Integer, ForeignKey('books.id'), primary_key=True)
+    book_category_id = Column(Integer, ForeignKey('book_category.id'), primary_key=True)
+    book = relationship('Books', back_populates='categories')
+    category = relationship('BookCategory', back_populates='books')

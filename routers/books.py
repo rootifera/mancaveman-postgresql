@@ -55,9 +55,14 @@ async def get_all(db: db_dependency, user: user_dependency):
 
 
 @router.get("/get_by_id/{id}", status_code=status.HTTP_200_OK)
-async def get_by_id(db: db_dependency, user: user_dependency, id: str):
+async def get_by_id(db: db_dependency, user: user_dependency, id: int):  # Assuming ID is an integer
     validate_user(user)
-    return db.query(Books).filter(Books.id == id).first()
+    book = db.query(Books).filter(Books.id == id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    formatted_book = format_book_response(book, db)
+    return formatted_book
 
 
 @router.get("/get_by_title/{title}", status_code=status.HTTP_200_OK)
@@ -65,19 +70,22 @@ async def get_by_title(user: user_dependency, db: db_dependency, title: str,
                        exact_match: bool = Query(False, description="Search for books by an exact title match.")):
     validate_user(user)
 
+    query = db.query(Books)
     if exact_match:
-        books = db.query(Books).filter(Books.title == title).all()
+        books = query.filter(Books.title == title).all()
     else:
-        books = db.query(Books).filter(Books.title.ilike(f"%{title}%")).all()
+        books = query.filter(Books.title.ilike(f"%{title}%")).all()
 
     if not books:
         raise HTTPException(status_code=404, detail="No books found with the given title.")
 
-    return books
+    formatted_books = [format_book_response(book, db) for book in books]
+    return formatted_books
 
 
 @router.get("/get_by_author/{author}", status_code=status.HTTP_200_OK)
-async def get_by_author(author: str, db: db_dependency, user: user_dependency, exact_match: bool = Query(False)):
+async def get_by_author(author: str, db: db_dependency, user: user_dependency,
+                        exact_match: bool = Query(False, description="Search for books by an exact author match.")):
     validate_user(user)
 
     query = db.query(Books).join(BookAuthorAssociation).join(BookAuthor)
@@ -86,10 +94,11 @@ async def get_by_author(author: str, db: db_dependency, user: user_dependency, e
     else:
         books = query.filter(BookAuthor.name.ilike(f"%{author}%")).all()
 
-    if books:
-        return books
-    else:
+    if not books:
         raise HTTPException(status_code=404, detail="No books found for the given author.")
+
+    formatted_books = [format_book_response(book, db) for book in books]
+    return formatted_books
 
 
 @router.get("/get_by_publisher/{publisher}", status_code=status.HTTP_200_OK)
@@ -106,7 +115,9 @@ async def get_by_publisher(user: user_dependency, db: db_dependency, publisher: 
     if not books:
         raise HTTPException(status_code=404, detail="No books found with the given publisher.")
 
-    return books
+    # Format each book for detailed response, including authors
+    formatted_books = [format_book_response(book, db) for book in books]
+    return formatted_books
 
 
 @router.get("/get_by_category/{category}", status_code=status.HTTP_200_OK)
@@ -114,17 +125,16 @@ async def get_by_category(user: user_dependency, db: db_dependency, category: st
                           exact_match: bool = Query(False, description="Search for books by an exact category match.")):
     validate_user(user)
 
-    books = db.query(Books).all()
     if exact_match:
-        filtered_books = [book for book in books if category in book.category]
+        books = db.query(Books).filter(Books.category.contains([category])).all()
     else:
-        filtered_books = [book for book in books if
-                          any(cat.lower().find(category.lower()) != -1 for cat in book.category)]
+        books = db.query(Books).filter(Books.category.any(category.ilike(f"%{category}%"))).all()
 
-    if not filtered_books:
+    if not books:
         raise HTTPException(status_code=404, detail="No books found for the given category.")
 
-    return filtered_books
+    formatted_books = [format_book_response(book, db) for book in books]
+    return formatted_books
 
 
 @router.get("/get_by_print_type/{print_type}", status_code=status.HTTP_200_OK)
@@ -141,24 +151,8 @@ async def get_by_print_type(user: user_dependency, db: db_dependency, print_type
     if not books:
         raise HTTPException(status_code=404, detail="No books found with the given print type.")
 
-    return books
-
-
-@router.get("/get_by_print_type/{print_type}", status_code=status.HTTP_200_OK)
-async def get_by_print_type(user: user_dependency, db: db_dependency, print_type: str,
-                            exact_match: bool = Query(False,
-                                                      description="Search for books by an exact print type match.")):
-    validate_user(user)
-
-    if exact_match:
-        books = db.query(Books).filter(Books.print_type == print_type).all()
-    else:
-        books = db.query(Books).filter(Books.print_type.ilike(f"%{print_type}%")).all()
-
-    if not books:
-        raise HTTPException(status_code=404, detail="No books found with the specified print type.")
-
-    return books
+    formatted_books = [format_book_response(book, db) for book in books]
+    return formatted_books
 
 
 @router.get("/get_by_isbn/{isbn}", status_code=status.HTTP_200_OK)
@@ -169,10 +163,11 @@ async def get_by_isbn(db: db_dependency, user: user_dependency, isbn: str):
         raise HTTPException(status_code=400, detail="Invalid ISBN format. ISBN must be either 10 or 13 digits long.")
 
     isbn_field = Books.isbn_10 if len(isbn) == 10 else Books.isbn_13
-    result = db.query(Books).filter(isbn_field == isbn).first()
+    book = db.query(Books).filter(isbn_field == isbn).first()
 
-    if result:
-        return result
+    if book:
+        formatted_book = format_book_response(book, db)
+        return formatted_book
     else:
         raise HTTPException(status_code=404, detail="Book not found with the provided ISBN.")
 
@@ -215,7 +210,8 @@ async def book_search(
     if not results:
         raise HTTPException(status_code=404, detail="No books found matching the search criteria.")
 
-    return results
+    formatted_results = [format_book_response(book, db) for book in results]
+    return formatted_results
 
 
 @router.get('/autofill')
