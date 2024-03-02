@@ -21,15 +21,18 @@ router = APIRouter(
 
 
 def format_book_response(book, db_session):
-    # Fetch author names
     author_names = db_session.query(BookAuthor.name).join(
-        BookAuthorAssociation, BookAuthorAssociation.book_author_id == BookAuthor.id
+        BookAuthorAssociation, BookAuthorAssociation.author_id == BookAuthor.id
     ).filter(BookAuthorAssociation.book_id == book.id).all()
     authors_list = [author[0] for author in author_names]
 
-    category_names = db_session.query(BookCategory.name).join(
+    category_query = db_session.query(BookCategory.name).join(
         BookCategoryAssociation, BookCategoryAssociation.book_category_id == BookCategory.id
-    ).filter(BookCategoryAssociation.book_id == book.id).all()
+    ).filter(BookCategoryAssociation.book_id == book.id)
+    print(f"Category Query: {category_query}")
+    category_names = category_query.all()
+    print(f"Category Names: {category_names}")
+
     categories_list = [category[0] for category in category_names]
 
     book_data = {
@@ -50,6 +53,8 @@ def format_book_response(book, db_session):
     }
 
     return book_data
+
+
 
 
 @router.get("/get_all", status_code=status.HTTP_200_OK)
@@ -243,18 +248,9 @@ async def autofill(user: user_dependency, db: db_dependency, isbn: str):
 async def add_book(book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
-    existing_book = db.query(Books).filter(
-        or_(
-            Books.isbn_10 == book_request.isbn_10,
-            Books.isbn_13 == book_request.isbn_13
-        )
-    ).first()
-
-    if existing_book:
-        raise HTTPException(status_code=400, detail="A book with the given ISBN already exists.")
-
     try:
         new_book = Books(**book_request.dict(exclude={"author", "category"}))
+        db.add(new_book)
 
         for author_name in book_request.author:
             author = db.query(BookAuthor).filter_by(name=author_name).first()
@@ -263,18 +259,27 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
                 db.add(author)
                 db.commit()
 
-            book_author_link = BookAuthorAssociation(book=new_book, author=author)
-            db.add(book_author_link)
+            book_author_association = BookAuthorAssociation(book=new_book, author=author)
+            db.add(book_author_association)
 
-        db.add(new_book)
+        for category_name in book_request.category:
+            category = db.query(BookCategory).filter_by(name=category_name).first()
+            if not category:
+                category = BookCategory(name=category_name)
+                db.add(category)
+                db.commit()
+
+            book_category_association = BookCategoryAssociation(book=new_book, category=category)
+            db.add(book_category_association)
 
         db.commit()
-        actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}",
-                          user.get('username'))
-        return {"message": "Book added successfully with authors"}
+
+        actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}", user.get('username'))
+        return {"message": "Book added successfully with authors and categories"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error adding book: {str(e)}")
+
 
 
 @router.put("/update/{book_id}", status_code=status.HTTP_202_ACCEPTED)
