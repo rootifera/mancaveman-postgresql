@@ -269,12 +269,12 @@ class Books(Base):
     __tablename__ = 'books'
 
     id = Column(Integer, primary_key=True, index=True)
-    isbn_10 = Column(String, nullable=True)
-    isbn_13 = Column(String, nullable=True)
-    title = Column(String)
+    isbn_10 = Column(String, nullable=True, index=True)
+    isbn_13 = Column(String, nullable=True, index=True)
+    title = Column(String, index=True)
     subtitle = Column(String, nullable=True)
     authors = relationship('BookAuthorAssociation', back_populates='book')
-    publisher = Column(String)
+    publisher = Column(String, index=True)
     published_date = Column(String)
     description = Column(String, nullable=True)
     categories = relationship('BookCategoryAssociation', back_populates='book')
@@ -295,15 +295,15 @@ class BookRequest(BaseModel):
     print_type: Optional[str] = ''
     maturity_rating: Optional[str] = ''
     condition: Optional[str] = ''
-    location: str
+    location: Optional[str] = ''
     isbn_10: Optional[str] = ''
     isbn_13: Optional[str] = ''
 
 
 class BookAuthorAssociation(Base):
     __tablename__ = 'book_author_association'
-    book_id = Column(Integer, ForeignKey('books.id'), primary_key=True)
-    book_author_id = Column(Integer, ForeignKey('book_author.id'), primary_key=True)
+    book_id = Column(Integer, ForeignKey('books.id', ondelete="CASCADE"), primary_key=True)
+    author_id = Column(Integer, ForeignKey('book_author.id', ondelete="CASCADE"), primary_key=True)
     book = relationship('Books', back_populates='authors')
     author = relationship('BookAuthor', back_populates='books')
 

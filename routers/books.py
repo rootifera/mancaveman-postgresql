@@ -4,10 +4,12 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from starlette import status
 
 from dependencies import db_dependency, user_dependency
-from models import Users, Books, BookRequest, BookAuthor, BookAuthorAssociation
+from models import Users, Books, BookRequest, BookAuthor, BookAuthorAssociation, BookCategory, BookCategoryAssociation
 from tools import actionlog
 from tools.book_populator import get_book_info
 from tools.common import validate_admin, validate_user
@@ -19,12 +21,16 @@ router = APIRouter(
 
 
 def format_book_response(book, db_session):
+    # Fetch author names
     author_names = db_session.query(BookAuthor.name).join(
         BookAuthorAssociation, BookAuthorAssociation.book_author_id == BookAuthor.id
     ).filter(BookAuthorAssociation.book_id == book.id).all()
     authors_list = [author[0] for author in author_names]
 
-    categories_list = book.category if book.category else []
+    category_names = db_session.query(BookCategory.name).join(
+        BookCategoryAssociation, BookCategoryAssociation.book_category_id == BookCategory.id
+    ).filter(BookCategoryAssociation.book_id == book.id).all()
+    categories_list = [category[0] for category in category_names]
 
     book_data = {
         "id": book.id,
@@ -36,7 +42,7 @@ def format_book_response(book, db_session):
         "publisher": book.publisher,
         "published_date": book.published_date,
         "description": book.description,
-        "category": categories_list,
+        "categories": categories_list,
         "print_type": book.print_type,
         "maturity_rating": book.maturity_rating,
         "condition": book.condition,
@@ -55,7 +61,7 @@ async def get_all(db: db_dependency, user: user_dependency):
 
 
 @router.get("/get_by_id/{id}", status_code=status.HTTP_200_OK)
-async def get_by_id(db: db_dependency, user: user_dependency, id: int):  # Assuming ID is an integer
+async def get_by_id(db: db_dependency, user: user_dependency, id: int):
     validate_user(user)
     book = db.query(Books).filter(Books.id == id).first()
     if not book:
@@ -70,7 +76,8 @@ async def get_by_title(user: user_dependency, db: db_dependency, title: str,
                        exact_match: bool = Query(False, description="Search for books by an exact title match.")):
     validate_user(user)
 
-    query = db.query(Books)
+    query = db.query(Books).options(joinedload(Books.authors), joinedload(Books.categories))
+
     if exact_match:
         books = query.filter(Books.title == title).all()
     else:
@@ -107,15 +114,19 @@ async def get_by_publisher(user: user_dependency, db: db_dependency, publisher: 
                                                      description="Search for books by an exact publisher match.")):
     validate_user(user)
 
+    query = db.query(Books)
     if exact_match:
-        books = db.query(Books).filter(Books.publisher == publisher).all()
+        query = query.filter(Books.publisher == publisher)
     else:
-        books = db.query(Books).filter(Books.publisher.ilike(f"%{publisher}%")).all()
+        query = query.filter(Books.publisher.ilike(f"%{publisher}%"))
+
+    query = query.options(joinedload(Books.authors), joinedload(Books.categories))
+
+    books = query.all()
 
     if not books:
         raise HTTPException(status_code=404, detail="No books found with the given publisher.")
 
-    # Format each book for detailed response, including authors
     formatted_books = [format_book_response(book, db) for book in books]
     return formatted_books
 
@@ -125,10 +136,11 @@ async def get_by_category(user: user_dependency, db: db_dependency, category: st
                           exact_match: bool = Query(False, description="Search for books by an exact category match.")):
     validate_user(user)
 
+    query = db.query(Books).join(BookCategoryAssociation).join(BookCategory)
     if exact_match:
-        books = db.query(Books).filter(Books.category.contains([category])).all()
+        books = query.filter(BookCategory.name == category).all()
     else:
-        books = db.query(Books).filter(Books.category.any(category.ilike(f"%{category}%"))).all()
+        books = query.filter(BookCategory.name.ilike(f"%{category}%")).all()
 
     if not books:
         raise HTTPException(status_code=404, detail="No books found for the given category.")
@@ -196,7 +208,7 @@ async def book_search(
     if publisher:
         query = query.filter(Books.publisher.ilike(f"%{publisher}%"))
     if category:
-        query = query.filter(Books.category.any(category))
+        query = query.join(BookCategoryAssociation).join(BookCategory).filter(BookCategory.name.ilike(f"%{category}%"))
     if maturity_rating:
         query = query.filter(Books.maturity_rating.ilike(f"%{maturity_rating}%"))
     if print_type:
@@ -231,8 +243,18 @@ async def autofill(user: user_dependency, db: db_dependency, isbn: str):
 async def add_book(book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
+    existing_book = db.query(Books).filter(
+        or_(
+            Books.isbn_10 == book_request.isbn_10,
+            Books.isbn_13 == book_request.isbn_13
+        )
+    ).first()
+
+    if existing_book:
+        raise HTTPException(status_code=400, detail="A book with the given ISBN already exists.")
+
     try:
-        new_book = Books(**book_request.dict(exclude={"author"}))
+        new_book = Books(**book_request.dict(exclude={"author", "category"}))
 
         for author_name in book_request.author:
             author = db.query(BookAuthor).filter_by(name=author_name).first()
@@ -243,6 +265,8 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
 
             book_author_link = BookAuthorAssociation(book=new_book, author=author)
             db.add(book_author_link)
+
+        db.add(new_book)
 
         db.commit()
         actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}",
@@ -256,6 +280,17 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
 @router.put("/update/{book_id}", status_code=status.HTTP_202_ACCEPTED)
 async def update_book(book_id: int, book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
+
+    if book_request.isbn_10 or book_request.isbn_13:
+        existing_book = db.query(Books).filter(
+            Books.id != book_id,
+            or_(
+                Books.isbn_10 == book_request.isbn_10,
+                Books.isbn_13 == book_request.isbn_13
+            )
+        ).first()
+        if existing_book:
+            raise HTTPException(status_code=400, detail="Another book with the given ISBN already exists.")
 
     book = db.query(Books).filter(Books.id == book_id).first()
     if not book:
