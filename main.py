@@ -13,7 +13,7 @@ from starlette.responses import FileResponse
 
 import models
 from database import engine, get_redis_connection, close_redis_connection
-from routers import auth, hardware, software, logging, health, users, admin, books, files, tags
+from routers import auth, hardware, software, logging, health, users, admin, books, files, tags, location
 from tools import actionlog
 from tools.config_manager import load_config
 
@@ -46,6 +46,7 @@ app.include_router(hardware.router)
 app.include_router(software.router)
 app.include_router(books.router)
 app.include_router(health.router)
+app.include_router(location.router)
 app.include_router(logging.router)
 
 FAVICON_PATH = 'uploads/images/favicon.ico'
