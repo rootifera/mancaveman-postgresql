@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import UniqueConstraint
@@ -328,6 +328,22 @@ class BookCategoryAssociation(Base):
     book_category_id = Column(Integer, ForeignKey('book_category.id'), primary_key=True)
     book = relationship('Books', back_populates='categories')
     category = relationship('BookCategory', back_populates='books')
+
+
+class LocationRequest(BaseModel):
+    name: str
+    type_id: int
+    parent_id: int = None
+
+
+class LocationUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, description="New name for the location")
+    type_id: Optional[int] = Field(None, description="New type ID for the location")
+    parent_id: Optional[int] = Field(None, description="New parent ID for the location")
+
+
+class LocationTypeRequest(BaseModel):
+    name: str
 
 
 class LocationType(Base):
