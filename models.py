@@ -3,7 +3,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.schema import UniqueConstraint
 
 from database import Base
@@ -328,3 +328,25 @@ class BookCategoryAssociation(Base):
     book_category_id = Column(Integer, ForeignKey('book_category.id'), primary_key=True)
     book = relationship('Books', back_populates='categories')
     category = relationship('BookCategory', back_populates='books')
+
+
+class LocationType(Base):
+    __tablename__ = 'location_types'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+
+    locations = relationship("Location", backref="type")
+
+
+class Location(Base):
+    __tablename__ = 'locations'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    type_id = Column(Integer, ForeignKey('location_types.id'), nullable=False)
+    parent_id = Column(Integer, ForeignKey('locations.id'), nullable=True)
+
+    children = relationship("Location",
+                            backref=backref('parent', remote_side=[id]),
+                            cascade="all, delete, delete-orphan")
