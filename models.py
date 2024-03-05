@@ -9,6 +9,40 @@ from sqlalchemy.schema import UniqueConstraint
 from database import Base
 
 
+class LocationRequest(BaseModel):
+    name: str
+    type_id: int
+    parent_id: Optional[int] = None
+
+
+class LocationUpdateRequest(BaseModel):
+    name: Optional[str] = Field(None, description="New name for the location")
+    type_id: Optional[int] = Field(None, description="New type ID for the location")
+    parent_id: Optional[int] = Field(None, description="New parent ID for the location")
+
+
+class LocationTypeRequest(BaseModel):
+    name: str
+
+
+class LocationType(Base):
+    __tablename__ = 'location_types'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, unique=True, nullable=False)
+    locations = relationship("Location", backref="type", lazy="dynamic")
+
+
+class Location(Base):
+    __tablename__ = 'locations'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    type_id = Column(Integer, ForeignKey('location_types.id', ondelete="CASCADE"), nullable=False)
+    parent_id = Column(Integer, ForeignKey('locations.id', ondelete="CASCADE"), nullable=True)
+    children = relationship("Location", backref=backref('parent', remote_side=[id]),
+                            cascade="all, delete, delete-orphan")
+
+
 class InitDB(Base):
     __tablename__ = 'initdb'
     id = Column(Integer, primary_key=True)
@@ -281,7 +315,9 @@ class Books(Base):
     print_type = Column(String, nullable=True)
     maturity_rating = Column(String, nullable=True)
     condition = Column(String, nullable=True)
-    location = Column(String, nullable=True)
+    location_id = Column(Integer, ForeignKey('locations.id'), nullable=True)
+    position = Column(String, nullable=True)
+    location = relationship('Location', backref='books')
 
 
 class BookRequest(BaseModel):
@@ -295,9 +331,10 @@ class BookRequest(BaseModel):
     print_type: Optional[str] = ''
     maturity_rating: Optional[str] = ''
     condition: Optional[str] = ''
-    location: Optional[str] = ''
     isbn_10: Optional[str] = ''
     isbn_13: Optional[str] = ''
+    location: List[LocationRequest] = []
+    position: Optional[str] = ''
 
 
 class BookAuthorAssociation(Base):
@@ -328,41 +365,3 @@ class BookCategoryAssociation(Base):
     book_category_id = Column(Integer, ForeignKey('book_category.id'), primary_key=True)
     book = relationship('Books', back_populates='categories')
     category = relationship('BookCategory', back_populates='books')
-
-
-class LocationRequest(BaseModel):
-    name: str
-    type_id: int
-    parent_id: int = None
-
-
-class LocationUpdateRequest(BaseModel):
-    name: Optional[str] = Field(None, description="New name for the location")
-    type_id: Optional[int] = Field(None, description="New type ID for the location")
-    parent_id: Optional[int] = Field(None, description="New parent ID for the location")
-
-
-class LocationTypeRequest(BaseModel):
-    name: str
-
-
-class LocationType(Base):
-    __tablename__ = 'location_types'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
-
-    locations = relationship("Location", backref="type")
-
-
-class Location(Base):
-    __tablename__ = 'locations'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    type_id = Column(Integer, ForeignKey('location_types.id'), nullable=False)
-    parent_id = Column(Integer, ForeignKey('locations.id'), nullable=True)
-
-    children = relationship("Location",
-                            backref=backref('parent', remote_side=[id]),
-                            cascade="all, delete, delete-orphan")

@@ -9,7 +9,8 @@ from sqlalchemy.orm import joinedload
 from starlette import status
 
 from dependencies import db_dependency, user_dependency
-from models import Users, Books, BookRequest, BookAuthor, BookAuthorAssociation, BookCategory, BookCategoryAssociation
+from models import Users, Books, BookRequest, BookAuthor, BookAuthorAssociation, BookCategory, BookCategoryAssociation, \
+    LocationType, Location
 from tools import actionlog
 from tools.book_populator import get_book_info
 from tools.common import validate_admin, validate_user
@@ -29,11 +30,15 @@ def format_book_response(book, db_session):
     category_query = db_session.query(BookCategory.name).join(
         BookCategoryAssociation, BookCategoryAssociation.book_category_id == BookCategory.id
     ).filter(BookCategoryAssociation.book_id == book.id)
-    print(f"Category Query: {category_query}")
     category_names = category_query.all()
-    print(f"Category Names: {category_names}")
-
     categories_list = [category[0] for category in category_names]
+
+    location_info = db_session.query(Location).filter(Location.id == book.location_id).first()
+    location_hierarchy = []
+    while location_info:
+        location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
+                                      "type_id": location_info.type_id, "parent_id": location_info.parent_id})
+        location_info = db_session.query(Location).filter(Location.id == location_info.parent_id).first()
 
     book_data = {
         "id": book.id,
@@ -49,12 +54,10 @@ def format_book_response(book, db_session):
         "print_type": book.print_type,
         "maturity_rating": book.maturity_rating,
         "condition": book.condition,
-        "location": book.location
+        "location": location_hierarchy
     }
 
     return book_data
-
-
 
 
 @router.get("/get_all", status_code=status.HTTP_200_OK)
@@ -249,7 +252,10 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
     validate_admin(user)
 
     try:
-        new_book = Books(**book_request.dict(exclude={"author", "category"}))
+        location_info = book_request.location
+        position = book_request.position
+
+        new_book = Books(**book_request.dict(exclude={"author", "category", "location", "position"}))
         db.add(new_book)
 
         for author_name in book_request.author:
@@ -272,14 +278,34 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
             book_category_association = BookCategoryAssociation(book=new_book, category=category)
             db.add(book_category_association)
 
+        if location_info:
+            for location in location_info:
+                location_type = db.query(LocationType).filter(LocationType.id == location.type_id).first()
+                if not location_type:
+                    raise HTTPException(status_code=400, detail="Location type does not exist")
+
+                if location.parent_id:
+                    parent_location = db.query(Location).filter(Location.id == location.parent_id).first()
+                    if not parent_location:
+                        raise HTTPException(status_code=400, detail="Parent location does not exist")
+
+                new_location = Location(name=location.name, type_id=location.type_id,
+                                        parent_id=location.parent_id)
+                db.add(new_location)
+                db.commit()
+                db.refresh(new_location)
+
+                setattr(new_book, 'location_id', new_location.id)
+                setattr(new_book, 'position', position)
+
         db.commit()
 
-        actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}", user.get('username'))
-        return {"message": "Book added successfully with authors and categories"}
+        actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}",
+                          user.get('username'))
+        return {"message": "Book added successfully with authors, categories, and location"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error adding book: {str(e)}")
-
 
 
 @router.put("/update/{book_id}", status_code=status.HTTP_202_ACCEPTED)
