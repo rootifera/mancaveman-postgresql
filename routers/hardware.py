@@ -755,7 +755,6 @@ async def add_hardware(
     return {"message": "Hardware added successfully", "id": hardware_model.id}
 
 
-
 @router.put("/update/{hardware_id}", status_code=status.HTTP_202_ACCEPTED)
 async def update_hardware(user: user_dependency, db: db_dependency, hardware_request: HardwareRequest,
                           hardware_id: int):
