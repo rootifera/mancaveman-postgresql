@@ -42,11 +42,11 @@ app.include_router(users.router)
 app.include_router(admin.router)
 app.include_router(files.router)
 app.include_router(tags.router)
+app.include_router(location.router)
 app.include_router(hardware.router)
 app.include_router(software.router)
 app.include_router(books.router)
 app.include_router(health.router)
-app.include_router(location.router)
 app.include_router(logging.router)
 
 FAVICON_PATH = 'uploads/images/favicon.ico'
