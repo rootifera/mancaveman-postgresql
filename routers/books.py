@@ -247,11 +247,21 @@ async def autofill(user: user_dependency, db: db_dependency, isbn: str):
         return await get_book_info(isbn, api_key)
 
 
+from sqlalchemy.orm.exc import NoResultFound
+
+
 @router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_book(book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
     try:
+        existing_book = db.query(Books).filter(
+            (Books.isbn_10 == book_request.isbn_10) | (Books.isbn_13 == book_request.isbn_13)
+        ).first()
+
+        if existing_book:
+            raise HTTPException(status_code=400, detail="Book with the same ISBN already exists")
+
         location_info = book_request.location
         position = book_request.position
 
@@ -303,6 +313,8 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
         actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}",
                           user.get('username'))
         return {"message": "Book added successfully with authors, categories, and location"}
+    except NoResultFound:
+        raise HTTPException(status_code=400, detail="No result found")
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Error adding book: {str(e)}")
