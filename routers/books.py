@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
 from starlette import status
 
 from dependencies import db_dependency, user_dependency
@@ -247,9 +248,6 @@ async def autofill(user: user_dependency, db: db_dependency, isbn: str):
         return await get_book_info(isbn, api_key)
 
 
-from sqlalchemy.orm.exc import NoResultFound
-
-
 @router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_book(book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
@@ -324,48 +322,87 @@ async def add_book(book_request: BookRequest, db: db_dependency, user: user_depe
 async def update_book(book_id: int, book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
-    if book_request.isbn_10 or book_request.isbn_13:
-        existing_book = db.query(Books).filter(
-            Books.id != book_id,
-            or_(
-                Books.isbn_10 == book_request.isbn_10,
-                Books.isbn_13 == book_request.isbn_13
-            )
-        ).first()
-        if existing_book:
-            raise HTTPException(status_code=400, detail="Another book with the given ISBN already exists.")
+    try:
+        if book_request.isbn_10 or book_request.isbn_13:
+            existing_book = db.query(Books).filter(
+                Books.id != book_id,
+                or_(
+                    Books.isbn_10 == book_request.isbn_10,
+                    Books.isbn_13 == book_request.isbn_13
+                )
+            ).first()
+            if existing_book:
+                raise HTTPException(status_code=400, detail="Another book with the given ISBN already exists.")
 
-    book = db.query(Books).filter(Books.id == book_id).first()
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        with db.begin():
+            book = db.query(Books).filter(Books.id == book_id).first()
+            if not book:
+                raise HTTPException(status_code=404, detail="Book not found")
 
-    for key, value in book_request.dict(exclude={"author"}).items():
-        setattr(book, key, value)
+            for key, value in book_request.dict(exclude={"author", "location"}).items():
+                setattr(book, key, value)
 
-    db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
-    for author_name in book_request.author:
-        author = db.query(BookAuthor).filter_by(name=author_name).first()
-        if not author:
-            author = BookAuthor(name=author_name)
-            db.add(author)
-            db.commit()
-        book_author_link = BookAuthorAssociation(book_id=book.id, book_author_id=author.id)
-        db.add(book_author_link)
+            if book_request.location:
+                location_info = book_request.location[0]
 
-    db.commit()
-    return {"message": f"Book with ID {book_id} updated successfully."}
+                location_type = db.query(LocationType).filter(LocationType.id == location_info.type_id).first()
+                if not location_type:
+                    raise HTTPException(status_code=400, detail="Location type does not exist")
+
+                if location_info.parent_id:
+                    parent_location = db.query(Location).filter(Location.id == location_info.parent_id).first()
+                    if not parent_location:
+                        raise HTTPException(status_code=400, detail="Parent location does not exist")
+
+                if book.location:
+                    existing_location = book.location[0]
+                    existing_location.name = location_info.name
+                    existing_location.type_id = location_info.type_id
+                    existing_location.parent_id = location_info.parent_id
+                else:
+                    new_location = Location(name=location_info.name, type_id=location_info.type_id,
+                                            parent_id=location_info.parent_id)
+                    db.add(new_location)
+                    db.commit()
+                    db.refresh(new_location)
+
+                    setattr(book, 'location_id', new_location.id)
+
+            db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
+
+            for author_name in book_request.author:
+                author = db.query(BookAuthor).filter_by(name=author_name).first()
+                if not author:
+                    author = BookAuthor(name=author_name)
+                    db.add(author)
+                    db.commit()
+
+                book_author_link = BookAuthorAssociation(book_id=book.id, book_author_id=author.id)
+                db.add(book_author_link)
+
+        return {"message": f"Book with ID {book_id} updated successfully."}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Error updating book: {str(e)}")
 
 
 @router.delete("/delete/{book_id}", status_code=status.HTTP_202_ACCEPTED)
 async def delete_book(book_id: int, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
-    db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
-    deletion_result = db.query(Books).filter(Books.id == book_id).delete()
+    try:
+        with db.begin():
+            db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
 
-    if deletion_result:
-        db.commit()
-        return {"message": "Book deleted successfully."}
-    else:
+            deletion_result = db.query(Books).filter(Books.id == book_id).delete()
+
+            if deletion_result:
+                db.commit()
+                return {"message": "Book deleted successfully."}
+            else:
+                raise HTTPException(status_code=404, detail="Book not found")
+
+    except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=404, detail="Book not found")
+        raise HTTPException(status_code=400, detail=f"Error deleting book: {str(e)}")
