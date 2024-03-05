@@ -86,10 +86,11 @@ class Hardware(Base):
     component_type_id = Column(Integer, ForeignKey('component_type.id'))
     brand = relationship("HardwareBrand", back_populates="hardware")
     brand_id = Column(Integer, ForeignKey('hardware_brand.id'))
+    location_id = Column(Integer, ForeignKey('locations.id'))
+    location = relationship("Location", backref='hardware')
     model = Column(String)
     condition = Column(String, default="Untested")
     quantity = Column(Integer)
-    location = Column(String)
     is_new = Column(Boolean, default=False)
     purchase_date = Column(String, nullable=True)
     purchased_from = Column(String, nullable=True)
@@ -109,7 +110,7 @@ class HardwareRequest(BaseModel):
     model: str
     condition: str
     quantity: int
-    location: str
+    location: List[LocationRequest] = []
     is_new: bool
     purchase_date: Optional[str]
     purchased_from: Optional[str]
