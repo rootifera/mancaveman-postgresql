@@ -16,7 +16,6 @@ print_separator() {
     print_color "$BLUE" "===================================================="
 }
 
-# Generate random number using /dev/urandom
 generate_random_number() {
     echo $((100000 + $(head -c 4 /dev/urandom | od -A n -t u4) % 900000))
 }
