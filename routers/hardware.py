@@ -113,7 +113,7 @@ async def get_all(db: db_dependency, user: user_dependency):
         hardware_list = (
             db.query(Hardware)
             .options(joinedload(Hardware.brand), joinedload(Hardware.category),
-                     joinedload(Hardware.location))  # Include location
+                     joinedload(Hardware.location))
             .all()
         )
 

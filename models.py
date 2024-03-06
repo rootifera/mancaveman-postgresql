@@ -189,7 +189,8 @@ class Software(Base):
     platform = relationship("SoftwarePlatform", back_populates="software")
     year = Column(Integer, nullable=True)
     barcode = Column(String, nullable=True)
-    location = Column(String)
+    location_id = Column(Integer, ForeignKey('locations.id'))
+    location = relationship("Location", backref='software')
     media_type_id = Column(Integer, ForeignKey('software_type.id'))
     media_type = relationship("SoftwareMediaType", back_populates="software")
     media_count = Column(Integer, nullable=True)
@@ -273,7 +274,7 @@ class SoftwareRequest(BaseModel):
     platform_id: int
     year: Optional[int]
     barcode: Optional[str]
-    location: str
+    location: List[LocationRequest] = []
     media_type_id: Optional[int]
     media_count: Optional[int]
     condition: Optional[str]

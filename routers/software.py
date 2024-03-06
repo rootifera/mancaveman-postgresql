@@ -14,7 +14,7 @@ from definitions import DESC_FUZZY
 from dependencies import db_dependency, user_dependency
 from models import Software, SoftwareRequest, SoftwareCategory, SoftwareCategoryRequest, SoftwarePublisher, \
     SoftwarePublisherRequest, SoftwareDeveloper, SoftwareDeveloperRequest, SoftwarePlatform, SoftwarePlatformRequest, \
-    SoftwareMediaType, SoftwareMediaTypeRequest, SoftwareTag, Tag
+    SoftwareMediaType, SoftwareMediaTypeRequest, SoftwareTag, Tag, Location
 from tools import actionlog
 from tools.common import validate_user, validate_admin
 
@@ -67,12 +67,19 @@ def format_software_response(software_model, db_session):
     ).all()
     tags_list = [tag[0] for tag in tags]
 
+    location_info = db_session.query(Location).filter(Location.id == software_model.location_id).first()
+    location_hierarchy = []
+    while location_info:
+        location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
+                                      "type_id": location_info.type_id, "parent_id": location_info.parent_id})
+        location_info = db_session.query(Location).filter(Location.id == location_info.parent_id).first()
+
     return {
         "id": software_model.id,
         "name": software_model.name,
         "year": software_model.year,
         "barcode": software_model.barcode,
-        "location": software_model.location,
+        "location": location_hierarchy,
         "media_count": software_model.media_count,
         "condition": software_model.condition,
         "product_key": software_model.product_key,
@@ -784,7 +791,7 @@ async def get_all_software(db: db_dependency, user: user_dependency):
             db.query(Software)
             .options(joinedload(Software.category), joinedload(Software.publisher),
                      joinedload(Software.developer), joinedload(Software.platform),
-                     joinedload(Software.media_type))
+                     joinedload(Software.media_type), joinedload(Software.location))
             .all()
         )
 
@@ -799,14 +806,14 @@ async def get_all_software(db: db_dependency, user: user_dependency):
 
 
 @router.get("/get_by_id/{id}", status_code=status.HTTP_200_OK)
-async def get__by_id(db: db_dependency, user: user_dependency, id: int):
+async def get_by_id(db: db_dependency, user: user_dependency, id: int):
     validate_user(user)
 
     software_model = (
         db.query(Software)
         .options(joinedload(Software.category), joinedload(Software.publisher),
                  joinedload(Software.developer), joinedload(Software.platform),
-                 joinedload(Software.media_type))
+                 joinedload(Software.media_type), joinedload(Software.location))  # Include location
         .filter(Software.id == id)
         .first()
     )
@@ -838,7 +845,8 @@ async def get_all_by_platform(user: user_dependency, db: db_dependency, platform
     software_records = (
         db.query(Software)
         .options(joinedload(Software.category), joinedload(Software.publisher),
-                 joinedload(Software.developer), joinedload(Software.media_type))
+                 joinedload(Software.developer), joinedload(Software.media_type),
+                 joinedload(Software.location))
         .filter(Software.platform_id.in_(platform_ids))
         .all()
     )
@@ -855,7 +863,8 @@ async def get_software_by_barcode(db: db_dependency, user: user_dependency, barc
         db.query(Software)
         .options(joinedload(Software.category), joinedload(Software.publisher),
                  joinedload(Software.developer), joinedload(Software.platform),
-                 joinedload(Software.media_type))
+                 joinedload(Software.media_type),
+                 joinedload(Software.location))
         .filter(Software.barcode == barcode)
         .first()
     )
@@ -874,7 +883,8 @@ async def get_software_by_name(user: user_dependency, db: db_dependency, name: s
 
     query = db.query(Software).options(joinedload(Software.category), joinedload(Software.publisher),
                                        joinedload(Software.developer), joinedload(Software.platform),
-                                       joinedload(Software.media_type))
+                                       joinedload(Software.media_type),
+                                       joinedload(Software.location))
     if exact_match:
         software_models = query.filter(Software.name == name).all()
     else:
@@ -907,7 +917,8 @@ async def get_by_publisher(user: user_dependency, db: db_dependency, publisher_n
     software_records = (
         db.query(Software)
         .options(joinedload(Software.category), joinedload(Software.developer),
-                 joinedload(Software.platform), joinedload(Software.media_type))
+                 joinedload(Software.platform), joinedload(Software.media_type),
+                 joinedload(Software.location))
         .filter(Software.publisher_id.in_(publisher_ids))
         .all()
     )
@@ -936,7 +947,8 @@ async def get_by_developer(user: user_dependency, db: db_dependency, developer_n
     software_records = (
         db.query(Software)
         .options(joinedload(Software.category), joinedload(Software.publisher),
-                 joinedload(Software.platform), joinedload(Software.media_type))
+                 joinedload(Software.platform), joinedload(Software.media_type),
+                 joinedload(Software.location))
         .filter(Software.developer_id.in_(developer_ids))
         .all()
     )
@@ -952,7 +964,9 @@ async def get_software_by_condition(user: user_dependency, db: db_dependency, co
 
     query = db.query(Software).options(joinedload(Software.category), joinedload(Software.publisher),
                                        joinedload(Software.developer), joinedload(Software.platform),
-                                       joinedload(Software.media_type))
+                                       joinedload(Software.media_type),
+                                       joinedload(Software.location))
+
     if exact_match:
         software_models = query.filter(Software.condition == condition).all()
     else:
@@ -1000,7 +1014,8 @@ async def software_search(
             db.query(Software)
             .options(joinedload(Software.category), joinedload(Software.publisher),
                      joinedload(Software.developer), joinedload(Software.platform),
-                     joinedload(Software.media_type))
+                     joinedload(Software.media_type),
+                     joinedload(Software.location))
             .filter(*filters)
             .limit(limit)
             .all()
@@ -1045,6 +1060,7 @@ async def add_software(user: user_dependency, db: db_dependency, software_reques
                     software_request.media_type_id is None or media_type_instance)):
         raise HTTPException(status_code=400, detail="Category, publisher, developer, platform, or media type not found")
 
+    # Create a new Software instance
     software_model = Software(
         category_id=software_request.category_id,
         publisher_id=software_request.publisher_id,
@@ -1054,7 +1070,6 @@ async def add_software(user: user_dependency, db: db_dependency, software_reques
         name=software_request.name,
         year=software_request.year,
         barcode=software_request.barcode,
-        location=software_request.location,
         media_count=software_request.media_count,
         condition=software_request.condition,
         product_key=software_request.product_key,
@@ -1066,37 +1081,66 @@ async def add_software(user: user_dependency, db: db_dependency, software_reques
         redump_disk_ids=software_request.redump_disk_ids,
         notes=software_request.notes
     )
+
+    # Add the software to the session
     db.add(software_model)
     db.flush()
 
+    # Process and add locations if the list is not empty
+    if software_request.location:
+        for location_request in software_request.location:
+            location_instance = db.query(Location).filter_by(
+                name=location_request.name,
+                type_id=location_request.type_id,
+                parent_id=location_request.parent_id
+            ).first()
+
+            if not location_instance:
+                location_instance = Location(
+                    name=location_request.name,
+                    type_id=location_request.type_id,
+                    parent_id=location_request.parent_id
+                )
+                db.add(location_instance)
+                db.commit()
+                db.refresh(location_instance)
+
+            # Set the location_id for the software model
+            software_model.location_id = location_instance.id
+
+    # Commit the changes to the database
+    db.commit()
+
+    # Process tags and add associations
     for tag_name in software_request.tags:
-        tag = db.query(Tag).filter(Tag.name == tag_name, Tag.tag_type == TAG_TYPE).first()
+        tag = db.query(Tag).filter(Tag.name == tag_name).first()
         if not tag:
-            tag = Tag(name=tag_name, tag_type=TAG_TYPE)
+            tag = Tag(name=tag_name)
             db.add(tag)
             db.flush()
 
-        existing_association = db.query(SoftwareTag).filter(
-            SoftwareTag.software_id == software_model.id,
-            SoftwareTag.tag_id == tag.id
-        ).first()
+        software_tag = SoftwareTag(software_id=software_model.id, tag_id=tag.id)
+        db.add(software_tag)
 
-        if not existing_association:
-            software_tag = SoftwareTag(software_id=software_model.id, tag_id=tag.id)
-            db.add(software_tag)
-
+    # Commit the changes to the database
     db.commit()
 
+    # Invalidate the Redis cache
     await invalidate_redis_cache('cache:all_software')
     await invalidate_redis_cache('cache:tags:*')
 
+    # Log the action
     actionlog.add_log(
         "New software added",
         f"{software_request.name} added at {datetime.now().strftime('%H:%M:%S')}",
         user.get('username')
     )
 
+    # Return the response
     return {"message": "Software added successfully", "id": software_model.id}
+
+
+
 
 
 @router.put("/update/{software_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -1154,12 +1198,10 @@ async def update_software(user: user_dependency, db: db_dependency, software_req
             db.flush()
         new_tag_ids.add(tag.id)
 
-    # Add new tags
     for tag_id in new_tag_ids - existing_tag_ids:
         software_tag = SoftwareTag(software_id=software_id, tag_id=tag_id)
         db.add(software_tag)
 
-    # Remove old tags
     for tag_id in existing_tag_ids - new_tag_ids:
         software_tag = db.query(SoftwareTag).filter_by(software_id=software_id, tag_id=tag_id).first()
         if software_tag:
@@ -1169,12 +1211,24 @@ async def update_software(user: user_dependency, db: db_dependency, software_req
     await invalidate_redis_cache('cache:all_software')
     await invalidate_redis_cache('cache:tags:*')
 
-    return {"message": "Software updated successfully", "id": software_model.id}
+    location_info = db.query(Location).filter(Location.id == software_model.location_id).first()
+    location_hierarchy = []
+    while location_info:
+        location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
+                                      "type_id": location_info.type_id, "parent_id": location_info.parent_id})
+        location_info = db.query(Location).filter(Location.id == location_info.parent_id).first()
+
+    response = {
+        "message": "Software updated successfully",
+        "id": software_model.id,
+        "location_hierarchy": location_hierarchy
+    }
+
+    return response
 
 
 @router.delete("/delete/{software_id}", status_code=status.HTTP_202_ACCEPTED)
 async def delete_software(user: user_dependency, db: db_dependency, software_id: int):
-    validate_user(user)
     validate_admin(user)
 
     software_model = db.query(Software).filter(Software.id == software_id).first()
@@ -1196,4 +1250,8 @@ async def delete_software(user: user_dependency, db: db_dependency, software_id:
         user.get('username')
     )
 
-    return {"message": "Software deleted successfully"}
+    response = {
+        "message": "Software deleted successfully"
+    }
+
+    return response
