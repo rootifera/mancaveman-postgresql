@@ -22,6 +22,13 @@ version="0.1.1"
 build_name="Salvador Limones"
 version_file="version.json"
 
+# Check if .env file exists, if not, create it using the create_env script
+ENV_FILE="./.env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Creating .env file before proceeding..."
+    ./create_env
+fi
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --version) version="$2"; shift 2 ;;
@@ -33,6 +40,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Continue with the rest of the build script
 if [[ -z "$build_number" ]]; then
     build_number=$(jq -r '.mancave[0].buildNumber' "$version_file")
     if ! [[ $build_number =~ ^[0-9]+$ ]]; then
