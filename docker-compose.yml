@@ -16,6 +16,7 @@ services:
     volumes:
       - config:/app/config
       - uploads:/app/uploads
+      - .env:/app/.env  # Mount the local .env file into the container
 
   postgres:
     image: postgres:latest
