@@ -13,7 +13,7 @@ from database import get_redis_connection, close_redis_connection, invalidate_re
 from definitions import DESC_EXACT_MATCH, DESC_404, DESC_BRAND_404, DESC_CATEGORY_404
 from dependencies import db_dependency, user_dependency
 from models import Hardware, HardwareRequest, HardwareCategory, HardwareBrand, HardwareBrandRequest, \
-    HardwareCategoryRequest, Tag, HardwareTag, ComponentTypeRequest, ComponentType, Location
+    HardwareCategoryRequest, Tag, HardwareTag, ComponentTypeRequest, ComponentType, Location, ItemLocation
 from tools import actionlog
 from tools.common import validate_user, validate_admin
 
@@ -35,21 +35,29 @@ def format_hardware_response(hardware_model, db_session):
     component_type_name = db_session.query(ComponentType.name).filter(
         ComponentType.id == hardware_model.component_type_id).scalar()
 
-    location_info = db_session.query(Location).filter(Location.id == hardware_model.location_id).first()
+    item_location_info = db_session.query(ItemLocation.location_id).filter(
+        ItemLocation.item_id == hardware_model.id,
+        ItemLocation.item_type == 'hardware'
+    ).first()
+
     location_hierarchy = []
-    while location_info:
-        location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
-                                      "type_id": location_info.type_id, "parent_id": location_info.parent_id})
-        location_info = db_session.query(Location).filter(Location.id == location_info.parent_id).first()
+    if item_location_info:
+        location_id = item_location_info[0]
+        location_info = db_session.query(Location).filter(Location.id == location_id).first()
+        while location_info:
+            location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
+                                          "parent_id": location_info.parent_id})
+            location_info = db_session.query(Location).filter(Location.id == location_info.parent_id).first()
 
     return {
         "id": hardware_model.id,
-        "category": hardware_model.category.name,
+        "category": hardware_model.category.name if hardware_model.category else None,
         "component_type": component_type_name,
-        "brand": hardware_model.brand.name,
+        "brand": hardware_model.brand.name if hardware_model.brand else None,
         "model": hardware_model.model,
         "condition": hardware_model.condition,
         "quantity": hardware_model.quantity,
+        "position": hardware_model.position,
         "location": location_hierarchy,
         "is_new": hardware_model.is_new,
         "purchase_date": hardware_model.purchase_date,
@@ -112,8 +120,7 @@ async def get_all(db: db_dependency, user: user_dependency):
 
         hardware_list = (
             db.query(Hardware)
-            .options(joinedload(Hardware.brand), joinedload(Hardware.category),
-                     joinedload(Hardware.location))
+            .options(joinedload(Hardware.brand), joinedload(Hardware.category))
             .all()
         )
 
@@ -133,7 +140,7 @@ async def get_by_id(db: db_dependency, user: user_dependency, hw_id: int):
 
     hardware_model = (
         db.query(Hardware)
-        .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.location))
+        .options(joinedload(Hardware.brand), joinedload(Hardware.category))
         .filter(Hardware.id == hw_id)
         .first()
     )
@@ -151,7 +158,7 @@ async def get_by_barcode(db: db_dependency, user: user_dependency, barcode: str)
 
     hardware_model = (
         db.query(Hardware)
-        .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.location))
+        .options(joinedload(Hardware.brand), joinedload(Hardware.category))
         .filter(Hardware.barcode == barcode)
         .first()
     )
@@ -170,7 +177,7 @@ async def get_by_model(user: user_dependency, db: db_dependency, model: str,
 
     hardware_models = (
         db.query(Hardware)
-        .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.location))
+        .options(joinedload(Hardware.brand), joinedload(Hardware.category))
         .filter(Hardware.model == model if exact_match else Hardware.model.ilike(f"%{model}%"))
         .all()
     )
@@ -192,8 +199,7 @@ async def get_by_brand(user: user_dependency, db: db_dependency, brand: str,
         db.query(Hardware)
         .join(Hardware.brand)
         .join(Hardware.category)
-        .join(Hardware.location)
-        .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.location))
+        .options(joinedload(Hardware.brand), joinedload(Hardware.category))
         .filter(HardwareBrand.name == brand if exact_match else HardwareBrand.name.ilike(f"%{brand}%"))
         .all()
     )
@@ -214,8 +220,7 @@ async def get_by_category(user: user_dependency, db: db_dependency, category: st
     hardware_models = (
         db.query(Hardware)
         .join(Hardware.category)
-        .join(Hardware.location)
-        .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.location))
+        .options(joinedload(Hardware.brand), joinedload(Hardware.category))
         .filter(HardwareCategory.name == category if exact_match else HardwareCategory.name.ilike(f"%{category}%"))
         .all()
     )
@@ -260,18 +265,13 @@ async def hardware_search(
     if component_type:
         filters.append(Hardware.component_type.has(ComponentType.name.ilike(f"%{component_type}%")))
 
-    if not filters:
-        hardware_models = db.query(Hardware).order_by(Hardware.id.desc()).limit(10).all()
-    else:
-        hardware_models = (
-            db.query(Hardware)
-            .join(Hardware.location)
-            .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.component_type),
-                     joinedload(Hardware.location))
-            .filter(*filters)
-            .limit(limit)
-            .all()
-        )
+    hardware_models = (
+        db.query(Hardware)
+        .options(joinedload(Hardware.brand), joinedload(Hardware.category), joinedload(Hardware.component_type))
+        .filter(*filters)
+        .limit(limit)
+        .all()
+    )
 
     responses = [format_hardware_response(hardware_model, db) for hardware_model in hardware_models]
     return responses
@@ -663,21 +663,13 @@ async def delete_component_types_by_category(hardware_category_id: int, db: db_d
 
 @router.post("/add", status_code=status.HTTP_201_CREATED)
 async def add_hardware(
-        user: user_dependency,
+        hardware_request: HardwareRequest,
         db: db_dependency,
-        hardware_request: HardwareRequest
+        user: user_dependency
 ):
     validate_admin(user)
 
-    category_instance = db.query(HardwareCategory).filter_by(id=hardware_request.category_id).first()
-    brand_instance = db.query(HardwareBrand).filter_by(id=hardware_request.brand_id).first()
-    component_type_instance = db.query(ComponentType).filter_by(id=hardware_request.component_type_id).first()
-
-    if not (category_instance and brand_instance and component_type_instance):
-        raise HTTPException(status_code=400, detail="Category, brand, or component type not found")
-
-    # Create a new Hardware instance
-    hardware_model = Hardware(
+    new_hardware = Hardware(
         category_id=hardware_request.category_id,
         component_type_id=hardware_request.component_type_id,
         brand_id=hardware_request.brand_id,
@@ -693,38 +685,18 @@ async def add_hardware(
         invoice=hardware_request.invoice,
         barcode=hardware_request.barcode,
         repair_history=hardware_request.repair_history,
-        notes=hardware_request.notes
+        notes=hardware_request.notes,
+        position=hardware_request.position  # Directly saving the position
     )
 
-    # Add the hardware to the session
-    db.add(hardware_model)
+    db.add(new_hardware)
     db.flush()
 
-    # Process and add locations
-    for location_request in hardware_request.location:
-        location_instance = db.query(Location).filter_by(
-            name=location_request.name,
-            type_id=location_request.type_id,
-            parent_id=location_request.parent_id
-        ).first()
+    # Create an association in ItemLocation for the new hardware item
+    item_location = ItemLocation(item_id=new_hardware.id, item_type='hardware', location_id=hardware_request.location_id)
+    db.add(item_location)
 
-        if not location_instance:
-            location_instance = Location(
-                name=location_request.name,
-                type_id=location_request.type_id,
-                parent_id=location_request.parent_id
-            )
-            db.add(location_instance)
-            db.commit()
-            db.refresh(location_instance)
-
-        # Set the location_id for the hardware model
-        hardware_model.location_id = location_instance.id
-
-    # Commit the changes to the database
-    db.commit()
-
-    # Process tags and add associations
+    # Process and add tags
     for tag_name in hardware_request.tags:
         tag = db.query(Tag).filter(Tag.name == tag_name).first()
         if not tag:
@@ -732,33 +704,30 @@ async def add_hardware(
             db.add(tag)
             db.flush()
 
-        hardware_tag = HardwareTag(hardware_id=hardware_model.id, tag_id=tag.id)
+        hardware_tag = HardwareTag(hardware_id=new_hardware.id, tag_id=tag.id)
         db.add(hardware_tag)
 
-    # Commit the changes to the database
     db.commit()
 
-    # Invalidate the Redis cache
     await invalidate_redis_cache('cache:all_hardware')
     await invalidate_redis_cache('cache:tags:*')
 
-    # Log the action
     actionlog.add_log(
         "New hardware added",
-        f"Hardware {hardware_request.model} (Brand ID: {hardware_request.brand_id}, Component Type ID: "
-        f"{hardware_request.component_type_id}) with ID {hardware_model.id} "
-        f"added at {datetime.now().strftime('%H:%M:%S')}",
+        f"Hardware {hardware_request.model} added with ID {new_hardware.id} at {datetime.now().strftime('%H:%M:%S')}",
         user.get('username')
     )
 
-    # Return the response
-    return {"message": "Hardware added successfully", "id": hardware_model.id}
+    return {"message": "Hardware added successfully", "id": new_hardware.id}
 
 
 @router.put("/update/{hardware_id}", status_code=status.HTTP_202_ACCEPTED)
-async def update_hardware(user: user_dependency, db: db_dependency, hardware_request: HardwareRequest,
-                          hardware_id: int):
-    validate_user(user)
+async def update_hardware(
+        hardware_id: int,
+        hardware_request: HardwareRequest,
+        db: db_dependency,
+        user: user_dependency
+):
     validate_admin(user)
 
     hardware_model = db.query(Hardware).filter(Hardware.id == hardware_id).first()
@@ -766,47 +735,25 @@ async def update_hardware(user: user_dependency, db: db_dependency, hardware_req
     if hardware_model is None:
         raise HTTPException(status_code=404, detail="Not found")
 
-    category_instance = db.query(HardwareCategory).filter_by(id=hardware_request.category_id).first()
-    brand_instance = db.query(HardwareBrand).filter_by(id=hardware_request.brand_id).first()
-    component_type_instance = db.query(ComponentType).filter_by(id=hardware_request.component_type_id).first()
+    for field, value in hardware_request.dict(exclude={'tags', 'location_id', 'position'}).items():
+        setattr(hardware_model, field, value)
 
-    if not (category_instance and brand_instance and component_type_instance):
-        raise HTTPException(status_code=400, detail="Category, brand, or component type not found")
+    item_location = db.query(ItemLocation).filter_by(item_id=hardware_id, item_type='hardware').first()
+    if not item_location:
+        item_location = ItemLocation(item_id=hardware_id, item_type='hardware', location_id=hardware_request.location_id)
+        db.add(item_location)
+    else:
+        item_location.location_id = hardware_request.location_id
 
-    hardware_model.category_id = hardware_request.category_id
-    hardware_model.brand_id = hardware_request.brand_id
-    hardware_model.component_type_id = hardware_request.component_type_id
-    hardware_model.model = hardware_request.model
-    hardware_model.condition = hardware_request.condition
-    hardware_model.quantity = hardware_request.quantity
-    hardware_model.is_new = hardware_request.is_new
-    hardware_model.purchase_date = hardware_request.purchase_date
-    hardware_model.purchased_from = hardware_request.purchased_from
-    hardware_model.store_link = hardware_request.store_link
-    hardware_model.photos = hardware_request.photos
-    hardware_model.user_manual = hardware_request.user_manual
-    hardware_model.invoice = hardware_request.invoice
-    hardware_model.barcode = hardware_request.barcode
-    hardware_model.repair_history = hardware_request.repair_history
-    hardware_model.notes = hardware_request.notes
+    hardware_model.position = hardware_request.position
 
-    location_info = db.query(Location).filter(Location.id == hardware_request.location_id).first()
-    location_hierarchy = []
-    while location_info:
-        location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
-                                      "type_id": location_info.type_id, "parent_id": location_info.parent_id})
-        location_info = db.query(Location).filter(Location.id == location_info.parent_id).first()
-
-    hardware_model.location = location_hierarchy
-
-    existing_tag_ids = {tag_id for (tag_id,) in
-                        db.query(HardwareTag.tag_id).filter(HardwareTag.hardware_id == hardware_id)}
+    existing_tag_ids = {tag_id for (tag_id,) in db.query(HardwareTag.tag_id).filter(HardwareTag.hardware_id == hardware_id)}
     new_tag_ids = set()
 
     for tag_name in hardware_request.tags:
-        tag = db.query(Tag).filter(Tag.name == tag_name, Tag.tag_type == TAG_TYPE).first()
+        tag = db.query(Tag).filter(Tag.name == tag_name).first()
         if not tag:
-            tag = Tag(name=tag_name, tag_type=TAG_TYPE)
+            tag = Tag(name=tag_name)
             db.add(tag)
             db.flush()
         new_tag_ids.add(tag.id)
@@ -821,8 +768,12 @@ async def update_hardware(user: user_dependency, db: db_dependency, hardware_req
             db.delete(hardware_tag)
 
     db.commit()
+
     await invalidate_redis_cache('cache:all_hardware')
     await invalidate_redis_cache('cache:tags:*')
+
+    actionlog.add_log("Hardware updated", f"Hardware with ID {hardware_model.id} updated successfully.", user.get('username'))
+
     return {"message": "Hardware updated successfully", "id": hardware_model.id}
 
 
@@ -836,8 +787,9 @@ async def delete_hardware(user: user_dependency, db: db_dependency, hardware_id:
     if hardware_model is None:
         raise HTTPException(status_code=404, detail='Not Found')
 
-    # Deletes related entries in the hardware_tags table (feels like a good idea for now)
     db.query(HardwareTag).filter(HardwareTag.hardware_id == hardware_id).delete()
+
+    db.query(ItemLocation).filter(ItemLocation.item_id == hardware_id, ItemLocation.item_type == 'hardware').delete()
 
     db.delete(hardware_model)
     db.commit()
@@ -854,3 +806,4 @@ async def delete_hardware(user: user_dependency, db: db_dependency, hardware_id:
     )
 
     return {"message": "Hardware deleted successfully"}
+

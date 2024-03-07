@@ -4,14 +4,12 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm.exc import NoResultFound
 from starlette import status
 
 from dependencies import db_dependency, user_dependency
 from models import Users, Books, BookRequest, BookAuthor, BookAuthorAssociation, BookCategory, BookCategoryAssociation, \
-    LocationType, Location
+    Location, ItemLocation
 from tools import actionlog
 from tools.book_populator import get_book_info
 from tools.common import validate_admin, validate_user
@@ -28,18 +26,24 @@ def format_book_response(book, db_session):
     ).filter(BookAuthorAssociation.book_id == book.id).all()
     authors_list = [author[0] for author in author_names]
 
-    category_query = db_session.query(BookCategory.name).join(
+    category_names = db_session.query(BookCategory.name).join(
         BookCategoryAssociation, BookCategoryAssociation.book_category_id == BookCategory.id
-    ).filter(BookCategoryAssociation.book_id == book.id)
-    category_names = category_query.all()
+    ).filter(BookCategoryAssociation.book_id == book.id).all()
     categories_list = [category[0] for category in category_names]
 
-    location_info = db_session.query(Location).filter(Location.id == book.location_id).first()
+    item_location_info = db_session.query(ItemLocation.location_id).filter(
+        ItemLocation.item_id == book.id,
+        ItemLocation.item_type == 'book'
+    ).first()
+
     location_hierarchy = []
-    while location_info:
-        location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
-                                      "type_id": location_info.type_id, "parent_id": location_info.parent_id})
-        location_info = db_session.query(Location).filter(Location.id == location_info.parent_id).first()
+    if item_location_info:
+        location_id = item_location_info.location_id
+        location_info = db_session.query(Location).filter(Location.id == location_id).first()
+        while location_info:
+            location_hierarchy.insert(0, {"id": location_info.id, "name": location_info.name,
+                                          "parent_id": location_info.parent_id})
+            location_info = db_session.query(Location).filter(Location.id == location_info.parent_id).first()
 
     book_data = {
         "id": book.id,
@@ -55,7 +59,8 @@ def format_book_response(book, db_session):
         "print_type": book.print_type,
         "maturity_rating": book.maturity_rating,
         "condition": book.condition,
-        "location": location_hierarchy
+        "position": book.position,
+        "location": location_hierarchy,
     }
 
     return book_data
@@ -252,157 +257,96 @@ async def autofill(user: user_dependency, db: db_dependency, isbn: str):
 async def add_book(book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
-    try:
-        existing_book = db.query(Books).filter(
-            (Books.isbn_10 == book_request.isbn_10) | (Books.isbn_13 == book_request.isbn_13)
-        ).first()
+    if db.query(Books).filter(
+            (Books.isbn_10 == book_request.isbn_10) | (Books.isbn_13 == book_request.isbn_13)).first():
+        raise HTTPException(status_code=400, detail="Book with the same ISBN already exists")
 
-        if existing_book:
-            raise HTTPException(status_code=400, detail="Book with the same ISBN already exists")
+    new_book = Books(**book_request.dict(exclude={"author", "category", "location_id", "position"}))
+    db.add(new_book)
+    db.commit()
 
-        location_info = book_request.location
-        position = book_request.position
+    for author_name in book_request.author:
+        author, _ = db.get_or_create(BookAuthor, name=author_name)
+        db.add(BookAuthorAssociation(book_id=new_book.id, author_id=author.id))
 
-        new_book = Books(**book_request.dict(exclude={"author", "category", "location", "position"}))
-        db.add(new_book)
+    for category_name in book_request.category:
+        category, _ = db.get_or_create(BookCategory, name=category_name)
+        db.add(BookCategoryAssociation(book_id=new_book.id, category_id=category.id))
 
-        for author_name in book_request.author:
-            author = db.query(BookAuthor).filter_by(name=author_name).first()
-            if not author:
-                author = BookAuthor(name=author_name)
-                db.add(author)
-                db.commit()
+    if book_request.location_id is not None:
+        item_location = ItemLocation(item_id=new_book.id, item_type='book', location_id=book_request.location_id,
+                                     position=book_request.position)
+        db.add(item_location)
 
-            book_author_association = BookAuthorAssociation(book=new_book, author=author)
-            db.add(book_author_association)
+    db.commit()
 
-        for category_name in book_request.category:
-            category = db.query(BookCategory).filter_by(name=category_name).first()
-            if not category:
-                category = BookCategory(name=category_name)
-                db.add(category)
-                db.commit()
+    # Log the action
+    actionlog.add_log("New book added",
+                      f"Book titled '{book_request.title}' added at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                      user.get('username'))
 
-            book_category_association = BookCategoryAssociation(book=new_book, category=category)
-            db.add(book_category_association)
-
-        if location_info:
-            for location in location_info:
-                location_type = db.query(LocationType).filter(LocationType.id == location.type_id).first()
-                if not location_type:
-                    raise HTTPException(status_code=400, detail="Location type does not exist")
-
-                if location.parent_id:
-                    parent_location = db.query(Location).filter(Location.id == location.parent_id).first()
-                    if not parent_location:
-                        raise HTTPException(status_code=400, detail="Parent location does not exist")
-
-                new_location = Location(name=location.name, type_id=location.type_id,
-                                        parent_id=location.parent_id)
-                db.add(new_location)
-                db.commit()
-                db.refresh(new_location)
-
-                setattr(new_book, 'location_id', new_location.id)
-                setattr(new_book, 'position', position)
-
-        db.commit()
-
-        actionlog.add_log("New book", f"{book_request.title} added at {datetime.now().strftime('%H:%M:%S')}",
-                          user.get('username'))
-        return {"message": "Book added successfully with authors, categories, and location"}
-    except NoResultFound:
-        raise HTTPException(status_code=400, detail="No result found")
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Error adding book: {str(e)}")
+    return {"message": "Book added successfully with authors, categories, and location"}
 
 
 @router.put("/update/{book_id}", status_code=status.HTTP_202_ACCEPTED)
 async def update_book(book_id: int, book_request: BookRequest, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
-    try:
-        if book_request.isbn_10 or book_request.isbn_13:
-            existing_book = db.query(Books).filter(
-                Books.id != book_id,
-                or_(
-                    Books.isbn_10 == book_request.isbn_10,
-                    Books.isbn_13 == book_request.isbn_13
-                )
-            ).first()
-            if existing_book:
-                raise HTTPException(status_code=400, detail="Another book with the given ISBN already exists.")
+    book = db.query(Books).filter(Books.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
 
-        with db.begin():
-            book = db.query(Books).filter(Books.id == book_id).first()
-            if not book:
-                raise HTTPException(status_code=404, detail="Book not found")
+    if book_request.isbn_10 or book_request.isbn_13:
+        existing_book = db.query(Books).filter(
+            Books.id != book_id,
+            (Books.isbn_10 == book_request.isbn_10) | (Books.isbn_13 == book_request.isbn_13)
+        ).first()
+        if existing_book:
+            raise HTTPException(status_code=400, detail="Another book with the given ISBN already exists.")
 
-            for key, value in book_request.dict(exclude={"author", "location"}).items():
-                setattr(book, key, value)
+    for key, value in book_request.dict(exclude={"author", "category", "location_id", "position"}).items():
+        if hasattr(book, key) and value is not None:
+            setattr(book, key, value)
 
-            if book_request.location:
-                location_info = book_request.location[0]
+    db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
+    for author_name in book_request.author:
+        author, _ = db.get_or_create(BookAuthor, name=author_name)
+        db.add(BookAuthorAssociation(book_id=book.id, author_id=author.id))
 
-                location_type = db.query(LocationType).filter(LocationType.id == location_info.type_id).first()
-                if not location_type:
-                    raise HTTPException(status_code=400, detail="Location type does not exist")
+    if book_request.location_id is not None:
+        item_location = db.query(ItemLocation).filter(ItemLocation.item_id == book_id,
+                                                      ItemLocation.item_type == 'book').first()
+        if item_location:
+            item_location.location_id = book_request.location_id
+            item_location.position = book_request.position
+        else:
+            db.add(ItemLocation(item_id=book_id, item_type='book', location_id=book_request.location_id,
+                                position=book_request.position))
 
-                if location_info.parent_id:
-                    parent_location = db.query(Location).filter(Location.id == location_info.parent_id).first()
-                    if not parent_location:
-                        raise HTTPException(status_code=400, detail="Parent location does not exist")
+    db.commit()
 
-                if book.location:
-                    existing_location = book.location[0]
-                    existing_location.name = location_info.name
-                    existing_location.type_id = location_info.type_id
-                    existing_location.parent_id = location_info.parent_id
-                else:
-                    new_location = Location(name=location_info.name, type_id=location_info.type_id,
-                                            parent_id=location_info.parent_id)
-                    db.add(new_location)
-                    db.commit()
-                    db.refresh(new_location)
+    actionlog.add_log("Book updated",
+                      f"Book titled '{book_request.title}' updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                      user.get('username'))
 
-                    setattr(book, 'location_id', new_location.id)
-
-            db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
-
-            for author_name in book_request.author:
-                author = db.query(BookAuthor).filter_by(name=author_name).first()
-                if not author:
-                    author = BookAuthor(name=author_name)
-                    db.add(author)
-                    db.commit()
-
-                book_author_link = BookAuthorAssociation(book_id=book.id, book_author_id=author.id)
-                db.add(book_author_link)
-
-        return {"message": f"Book with ID {book_id} updated successfully."}
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Error updating book: {str(e)}")
+    return {"message": f"Book with ID {book_id} updated successfully."}
 
 
 @router.delete("/delete/{book_id}", status_code=status.HTTP_202_ACCEPTED)
 async def delete_book(book_id: int, db: db_dependency, user: user_dependency):
     validate_admin(user)
 
-    try:
-        with db.begin():
-            db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
+    book = db.query(Books).filter(Books.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
 
-            deletion_result = db.query(Books).filter(Books.id == book_id).delete()
+    db.query(BookAuthorAssociation).filter(BookAuthorAssociation.book_id == book_id).delete()
 
-            if deletion_result:
-                db.commit()
-                return {"message": "Book deleted successfully."}
-            else:
-                raise HTTPException(status_code=404, detail="Book not found")
+    db.query(BookCategoryAssociation).filter(BookCategoryAssociation.book_id == book_id).delete()
 
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Error deleting book: {str(e)}")
+    db.query(ItemLocation).filter(ItemLocation.item_id == book_id, ItemLocation.item_type == 'book').delete()
+
+    db.delete(book)
+    db.commit()
+
+    return {"message": "Book deleted successfully."}

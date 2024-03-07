@@ -3,44 +3,36 @@ from typing import Optional, List
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship
 from sqlalchemy.schema import UniqueConstraint
 
 from database import Base
 
 
+class Location(Base):
+    __tablename__ = 'locations'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    parent_id = Column(Integer, ForeignKey('locations.id'), nullable=True)
+    children = relationship("Location")
+
+
 class LocationRequest(BaseModel):
     name: str
-    type_id: int
     parent_id: Optional[int] = None
 
 
 class LocationUpdateRequest(BaseModel):
     name: Optional[str] = Field(None, description="New name for the location")
-    type_id: Optional[int] = Field(None, description="New type ID for the location")
     parent_id: Optional[int] = Field(None, description="New parent ID for the location")
 
 
-class LocationTypeRequest(BaseModel):
-    name: str
-
-
-class LocationType(Base):
-    __tablename__ = 'location_types'
+class ItemLocation(Base):
+    __tablename__ = 'item_locations'
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
-    locations = relationship("Location", backref="type", lazy="dynamic")
-
-
-class Location(Base):
-    __tablename__ = 'locations'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    type_id = Column(Integer, ForeignKey('location_types.id', ondelete="CASCADE"), nullable=False)
-    parent_id = Column(Integer, ForeignKey('locations.id', ondelete="CASCADE"), nullable=True)
-    children = relationship("Location", backref=backref('parent', remote_side=[id]),
-                            cascade="all, delete, delete-orphan")
+    item_id = Column(Integer, nullable=False)
+    item_type = Column(String, nullable=False)
+    location_id = Column(Integer, ForeignKey('locations.id'), nullable=False)
 
 
 class InitDB(Base):
@@ -76,9 +68,7 @@ class Token(BaseModel):
 
 
 class Hardware(Base):
-    """Class for Hardware"""
     __tablename__ = 'hardware'
-
     id = Column(Integer, primary_key=True, index=True)
     category = relationship("HardwareCategory", back_populates="hardware")
     category_id = Column(Integer, ForeignKey('hardware_category.id'))
@@ -86,8 +76,6 @@ class Hardware(Base):
     component_type_id = Column(Integer, ForeignKey('component_type.id'))
     brand = relationship("HardwareBrand", back_populates="hardware")
     brand_id = Column(Integer, ForeignKey('hardware_brand.id'))
-    location_id = Column(Integer, ForeignKey('locations.id'))
-    location = relationship("Location", backref='hardware')
     model = Column(String)
     condition = Column(String, default="Untested")
     quantity = Column(Integer)
@@ -101,6 +89,7 @@ class Hardware(Base):
     barcode = Column(String, nullable=True)
     repair_history = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    position = Column(String, nullable=True)
 
 
 class HardwareRequest(BaseModel):
@@ -110,18 +99,19 @@ class HardwareRequest(BaseModel):
     model: str
     condition: str
     quantity: int
-    location: List[LocationRequest] = []
     is_new: bool
-    purchase_date: Optional[str]
-    purchased_from: Optional[str]
-    store_link: Optional[str]
-    photos: Optional[str]
-    user_manual: Optional[str]
-    invoice: Optional[str]
-    barcode: Optional[str]
-    repair_history: Optional[str]
+    purchase_date: Optional[str] = None
+    purchased_from: Optional[str] = None
+    store_link: Optional[str] = None
+    photos: Optional[str] = None
+    user_manual: Optional[str] = None
+    invoice: Optional[str] = None
+    barcode: Optional[str] = None
+    repair_history: Optional[str] = None
+    notes: Optional[str] = None
     tags: List[str] = []
-    notes: Optional[str]
+    location_id: int
+    position: Optional[str] = None
 
 
 class HardwareBrand(Base):
@@ -189,8 +179,6 @@ class Software(Base):
     platform = relationship("SoftwarePlatform", back_populates="software")
     year = Column(Integer, nullable=True)
     barcode = Column(String, nullable=True)
-    location_id = Column(Integer, ForeignKey('locations.id'))
-    location = relationship("Location", backref='software')
     media_type_id = Column(Integer, ForeignKey('software_type.id'))
     media_type = relationship("SoftwareMediaType", back_populates="software")
     media_count = Column(Integer, nullable=True)
@@ -203,6 +191,7 @@ class Software(Base):
     image_backup_location = Column(String, nullable=True)
     redump_disk_ids = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    position = Column(String, nullable=True)
 
 
 class SoftwareTag(Base):
@@ -272,21 +261,22 @@ class SoftwareRequest(BaseModel):
     publisher_id: int
     developer_id: int
     platform_id: int
-    year: Optional[int]
-    barcode: Optional[str]
-    location: List[LocationRequest] = []
-    media_type_id: Optional[int]
-    media_count: Optional[int]
-    condition: Optional[str]
-    product_key: Optional[str]
-    photo: Optional[str]
-    multiple_copies: Optional[bool]
-    multicopy_id: Optional[int]
-    image_backups: Optional[bool]
-    image_backup_location: Optional[str]
-    redump_disk_ids: Optional[str]
+    year: Optional[int] = None
+    barcode: Optional[str] = None
+    location_id: int
+    position: Optional[str] = None
+    media_type_id: Optional[int] = None
+    media_count: Optional[int] = None
+    condition: Optional[str] = None
+    product_key: Optional[str] = None
+    photo: Optional[str] = None
+    multiple_copies: Optional[bool] = None
+    multicopy_id: Optional[int] = None
+    image_backups: Optional[bool] = None
+    image_backup_location: Optional[str] = None
+    redump_disk_ids: Optional[str] = None
     tags: List[str] = []
-    notes: Optional[str]
+    notes: Optional[str] = None
 
 
 class ActionLog(Base):
@@ -301,7 +291,6 @@ class ActionLog(Base):
 
 
 class Books(Base):
-    """Class for books"""
     __tablename__ = 'books'
 
     id = Column(Integer, primary_key=True, index=True)
@@ -317,26 +306,24 @@ class Books(Base):
     print_type = Column(String, nullable=True)
     maturity_rating = Column(String, nullable=True)
     condition = Column(String, nullable=True)
-    location_id = Column(Integer, ForeignKey('locations.id'), nullable=True)
     position = Column(String, nullable=True)
-    location = relationship('Location', backref='books')
 
 
 class BookRequest(BaseModel):
     title: str
-    subtitle: Optional[str] = ''
+    subtitle: Optional[str] = None
     author: List[str]
     publisher: str
     published_date: str
-    description: Optional[str] = ''
-    category: List[str] = []
-    print_type: Optional[str] = ''
-    maturity_rating: Optional[str] = ''
-    condition: Optional[str] = ''
-    isbn_10: Optional[str] = ''
-    isbn_13: Optional[str] = ''
-    location: List[LocationRequest] = []
-    position: Optional[str] = ''
+    description: Optional[str] = None
+    category: List[str]
+    print_type: Optional[str] = None
+    maturity_rating: Optional[str] = None
+    condition: Optional[str] = None
+    isbn_10: Optional[str] = None
+    isbn_13: Optional[str] = None
+    location_id: Optional[int] = None
+    position: Optional[str] = None
 
 
 class BookAuthorAssociation(Base):
