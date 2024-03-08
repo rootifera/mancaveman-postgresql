@@ -669,7 +669,7 @@ async def add_hardware(
 ):
     validate_admin(user)
 
-    new_hardware = Hardware(
+    hardware_model = Hardware(
         category_id=hardware_request.category_id,
         component_type_id=hardware_request.component_type_id,
         brand_id=hardware_request.brand_id,
@@ -686,26 +686,31 @@ async def add_hardware(
         barcode=hardware_request.barcode,
         repair_history=hardware_request.repair_history,
         notes=hardware_request.notes,
-        position=hardware_request.position  # Directly saving the position
+        position=hardware_request.position
     )
 
-    db.add(new_hardware)
+    db.add(hardware_model)
     db.flush()
 
-    # Create an association in ItemLocation for the new hardware item
-    item_location = ItemLocation(item_id=new_hardware.id, item_type='hardware', location_id=hardware_request.location_id)
+    item_location = ItemLocation(item_id=hardware_model.id, item_type='hardware',
+                                 location_id=hardware_request.location_id)
     db.add(item_location)
 
-    # Process and add tags
     for tag_name in hardware_request.tags:
-        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        tag = db.query(Tag).filter(Tag.name == tag_name, Tag.tag_type == TAG_TYPE).first()
         if not tag:
-            tag = Tag(name=tag_name)
+            tag = Tag(name=tag_name, tag_type=TAG_TYPE)
             db.add(tag)
             db.flush()
 
-        hardware_tag = HardwareTag(hardware_id=new_hardware.id, tag_id=tag.id)
-        db.add(hardware_tag)
+        existing_association = db.query(HardwareTag).filter(
+            HardwareTag.hardware_id == hardware_model.id,
+            HardwareTag.tag_id == tag.id
+        ).first()
+
+        if not existing_association:
+            hardware_tag = HardwareTag(hardware_id=hardware_model.id, tag_id=tag.id)
+            db.add(hardware_tag)
 
     db.commit()
 
@@ -714,11 +719,11 @@ async def add_hardware(
 
     actionlog.add_log(
         "New hardware added",
-        f"Hardware {hardware_request.model} added with ID {new_hardware.id} at {datetime.now().strftime('%H:%M:%S')}",
+        f"Hardware {hardware_request.model} added with ID {hardware_model.id} at {datetime.now().strftime('%H:%M:%S')}",
         user.get('username')
     )
 
-    return {"message": "Hardware added successfully", "id": new_hardware.id}
+    return {"message": "Hardware added successfully", "id": hardware_model.id}
 
 
 @router.put("/update/{hardware_id}", status_code=status.HTTP_202_ACCEPTED)
@@ -740,20 +745,22 @@ async def update_hardware(
 
     item_location = db.query(ItemLocation).filter_by(item_id=hardware_id, item_type='hardware').first()
     if not item_location:
-        item_location = ItemLocation(item_id=hardware_id, item_type='hardware', location_id=hardware_request.location_id)
+        item_location = ItemLocation(item_id=hardware_id, item_type='hardware',
+                                     location_id=hardware_request.location_id)
         db.add(item_location)
     else:
         item_location.location_id = hardware_request.location_id
 
     hardware_model.position = hardware_request.position
 
-    existing_tag_ids = {tag_id for (tag_id,) in db.query(HardwareTag.tag_id).filter(HardwareTag.hardware_id == hardware_id)}
+    existing_tag_ids = {tag_id for (tag_id,) in
+                        db.query(HardwareTag.tag_id).filter(HardwareTag.hardware_id == hardware_id)}
     new_tag_ids = set()
 
     for tag_name in hardware_request.tags:
-        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        tag = db.query(Tag).filter(Tag.name == tag_name, Tag.tag_type == TAG_TYPE).first()
         if not tag:
-            tag = Tag(name=tag_name)
+            tag = Tag(name=tag_name, tag_type=TAG_TYPE)
             db.add(tag)
             db.flush()
         new_tag_ids.add(tag.id)
@@ -762,6 +769,7 @@ async def update_hardware(
         hardware_tag = HardwareTag(hardware_id=hardware_id, tag_id=tag_id)
         db.add(hardware_tag)
 
+    #
     for tag_id in existing_tag_ids - new_tag_ids:
         hardware_tag = db.query(HardwareTag).filter_by(hardware_id=hardware_id, tag_id=tag_id).first()
         if hardware_tag:
@@ -772,7 +780,8 @@ async def update_hardware(
     await invalidate_redis_cache('cache:all_hardware')
     await invalidate_redis_cache('cache:tags:*')
 
-    actionlog.add_log("Hardware updated", f"Hardware with ID {hardware_model.id} updated successfully.", user.get('username'))
+    actionlog.add_log("Hardware updated", f"Hardware with ID {hardware_model.id} updated successfully.",
+                      user.get('username'))
 
     return {"message": "Hardware updated successfully", "id": hardware_model.id}
 
@@ -806,4 +815,3 @@ async def delete_hardware(user: user_dependency, db: db_dependency, hardware_id:
     )
 
     return {"message": "Hardware deleted successfully"}
-
