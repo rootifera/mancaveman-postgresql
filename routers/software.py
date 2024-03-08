@@ -213,7 +213,6 @@ async def update_category(db: db_dependency, user: user_dependency,
         user.get('username')
     )
 
-    # Invalidate cache
     await invalidate_redis_cache('cache:all_sw_categories')
 
     return {"message": "Category updated successfully", "id": category_to_update.id, "name": category_to_update.name}
@@ -485,7 +484,6 @@ async def update_developer(db: db_dependency, user: user_dependency,
         user.get('username')
     )
 
-    # Invalidate cache
     await invalidate_redis_cache('cache:all_developers')
 
     return {"message": "Developer updated successfully", "id": developer_to_update.id, "name": developer_to_update.name}
@@ -1040,10 +1038,34 @@ async def search_by_tags(
 
 
 @router.post("/add", status_code=status.HTTP_201_CREATED)
-async def add_software(user: user_dependency, db: db_dependency, software_request: SoftwareRequest):
+async def add_software(
+        software_request: SoftwareRequest,
+        db: db_dependency,
+        user: user_dependency
+):
     validate_admin(user)
 
-    software_model = Software()
+    software_model = Software(
+        category_id=software_request.category_id,
+        publisher_id=software_request.publisher_id,
+        developer_id=software_request.developer_id,
+        platform_id=software_request.platform_id,
+        year=software_request.year,
+        barcode=software_request.barcode,
+        media_type_id=software_request.media_type_id,
+        media_count=software_request.media_count,
+        condition=software_request.condition,
+        product_key=software_request.product_key,
+        photo=software_request.photo,
+        multiple_copies=software_request.multiple_copies,
+        multicopy_id=software_request.multicopy_id,
+        image_backups=software_request.image_backups,
+        image_backup_location=software_request.image_backup_location,
+        redump_disk_ids=software_request.redump_disk_ids,
+        notes=software_request.notes,
+        position=software_request.position
+    )
+
     db.add(software_model)
     db.flush()
 
@@ -1055,14 +1077,20 @@ async def add_software(user: user_dependency, db: db_dependency, software_reques
     db.add(item_location)
 
     for tag_name in software_request.tags:
-        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        tag = db.query(Tag).filter(Tag.name == tag_name, Tag.tag_type == TAG_TYPE).first()
         if not tag:
-            tag = Tag(name=tag_name)
+            tag = Tag(name=tag_name, tag_type=TAG_TYPE)
             db.add(tag)
             db.flush()
 
-        software_tag = SoftwareTag(software_id=software_model.id, tag_id=tag.id)
-        db.add(software_tag)
+        existing_association = db.query(SoftwareTag).filter(
+            SoftwareTag.software_id == software_model.id,
+            SoftwareTag.tag_id == tag.id
+        ).first()
+
+        if not existing_association:
+            software_tag = SoftwareTag(software_id=software_model.id, tag_id=tag.id)
+            db.add(software_tag)
 
     db.commit()
 
@@ -1071,7 +1099,7 @@ async def add_software(user: user_dependency, db: db_dependency, software_reques
 
     actionlog.add_log(
         "New software added",
-        f"{software_request.name} added at {datetime.now().strftime('%H:%M:%S')}",
+        f"Software '{software_request.name}' added with ID {software_model.id} at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         user.get('username')
     )
 
@@ -1101,17 +1129,26 @@ async def update_software(
     else:
         db.add(ItemLocation(item_id=software_id, item_type='software', location_id=software_request.location_id))
 
-    current_tags = {tag.name for tag in db.query(Tag).join(SoftwareTag, SoftwareTag.tag_id == Tag.id).filter(
-        SoftwareTag.software_id == software_id)}
-    new_tags = set(software_request.tags)
+    existing_tag_ids = {tag_id for (tag_id,) in
+                        db.query(SoftwareTag.tag_id).filter(SoftwareTag.software_id == software_id)}
+    new_tag_ids = set()
 
-    for tag_name in new_tags - current_tags:
-        tag = db.query(Tag).filter_by(name=tag_name).first() or Tag(name=tag_name)
-        db.add(SoftwareTag(software_id=software_id, tag=tag))
+    for tag_name in software_request.tags:
+        tag = db.query(Tag).filter(Tag.name == tag_name, Tag.tag_type == TAG_TYPE).first()
+        if not tag:
+            tag = Tag(name=tag_name, tag_type=TAG_TYPE)
+            db.add(tag)
+            db.flush()
+        new_tag_ids.add(tag.id)
 
-    for tag_name in current_tags - new_tags:
-        tag_id = db.query(Tag.id).filter_by(name=tag_name).scalar()
-        db.query(SoftwareTag).filter_by(software_id=software_id, tag_id=tag_id).delete()
+    for tag_id in new_tag_ids - existing_tag_ids:
+        software_tag = SoftwareTag(software_id=software_id, tag_id=tag_id)
+        db.add(software_tag)
+
+    for tag_id in existing_tag_ids - new_tag_ids:
+        software_tag = db.query(SoftwareTag).filter_by(software_id=software_id, tag_id=tag_id).first()
+        if software_tag:
+            db.delete(software_tag)
 
     db.commit()
 
