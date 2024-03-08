@@ -14,7 +14,6 @@ services:
     networks:
       - cavenetwork
     volumes:
-      - config:/app/config
       - uploads:/app/uploads
       - .env:/app/.env  # Mount the local .env file into the container
 
@@ -45,6 +44,5 @@ networks:
 
 volumes:
   postgres_data:
-  config:
   uploads:
   redis_data:
