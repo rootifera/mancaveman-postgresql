@@ -17,6 +17,7 @@ services:
     volumes:
       - uploads:/app/uploads
       - .env:/app/.env
+      - logs:/app/logs
 
   postgres:
     image: postgres:latest
@@ -45,3 +46,4 @@ volumes:
   postgres_data:
   uploads:
   redis_data:
+  logs:
