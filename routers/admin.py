@@ -146,4 +146,10 @@ async def set_server_config(user: user_dependency, host_name: str, email_user: s
 
 @router.get("/first_run", dependencies=[Depends(RateLimiter(times=1, seconds=60))])
 async def first_run():
-    first_start_config()
+    try:
+        if first_start_config():
+            return {'message': 'database configured successfully.'}
+        else:
+            return {'message': 'already configured'}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during database configuration.")

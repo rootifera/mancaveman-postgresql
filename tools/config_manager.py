@@ -81,5 +81,5 @@ def first_start_config():
     if is_initdb():
         _create_admin_user()
         _inject_initial_data()
-
-    set_initdb(True)
+        set_initdb(True)
+        return True
