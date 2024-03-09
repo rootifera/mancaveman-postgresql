@@ -15,6 +15,7 @@ if [ ! -f "$ENV_FILE" ]; then
     REFRESH_TOKEN_EXPIRE_HOURS="72"
     PORT="8080"
     MODE="single"
+    CORE_LIMIT=True
 
     cat <<EOF > "$ENV_FILE"
 ### Database Config ###
@@ -31,6 +32,7 @@ REFRESH_TOKEN_EXPIRE_HOURS=$REFRESH_TOKEN_EXPIRE_HOURS
 ### Server Config (See README.md) ###
 PORT=$PORT
 MODE=$MODE
+CORE_LIMIT=$CORE_LIMIT
 EOF
 
     echo "########## .env file created successfully. ##########"
