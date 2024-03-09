@@ -73,13 +73,9 @@ async def root():
 
 
 if __name__ == "__main__":
-    from tools import config_manager
     from tools import dotenv_loader
 
     dotenv_loader.load_env()
-
-    if config_manager.is_initdb():
-        config_manager.docker_config(True)
 
     PORT = int(os.getenv('PORT'))
 
