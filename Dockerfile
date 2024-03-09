@@ -8,11 +8,9 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get autoremove -y && \
     apt-get autoclean && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN adduser --disabled-password --gecos '' caveman
-
-RUN mkdir -p /app/uploads /app/config && \
+    rm -rf /var/lib/apt/lists/* && \
+    adduser --disabled-password --gecos '' caveman && \
+    mkdir -p /app/uploads /app/config /app/logs && \
     chown -R caveman:caveman /app
 
 USER caveman
