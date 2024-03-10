@@ -1,8 +1,9 @@
-import datetime
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import AsyncGenerator
+from typing import Dict
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends
@@ -59,16 +60,21 @@ async def favicon():
     return FileResponse(FAVICON_PATH)
 
 
+def load_version_info() -> Dict:
+    with open("version.json", "r") as file:
+        version_info = json.load(file)
+    return version_info["mancave"][0]
+
+
 @app.get('/', dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def root():
-    with open("version.json", "r") as f:
-        ver_info = json.load(f)
+    ver_info = load_version_info()
     return {
-        'appName': ver_info["mancave"][0]["appName"],
-        'version': ver_info["mancave"][0]["version"],
-        'database': ver_info["mancave"][0]["database"],
-        "buildDate": ver_info["mancave"][0]["buildDate"],
-        "buildName": ver_info["mancave"][0]["buildName"],
-        "buildID": ver_info["mancave"][0]["buildID"],
-        "buildNumber": ver_info["mancave"][0]["buildNumber"]
+        'appName': ver_info["appName"],
+        'version': ver_info["version"],
+        'database': ver_info["database"],
+        "buildDate": ver_info["buildDate"],
+        "buildName": ver_info["buildName"],
+        "buildID": ver_info["buildID"],
+        "buildNumber": ver_info["buildNumber"]
     }
