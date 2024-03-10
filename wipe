@@ -1,0 +1,17 @@
+#!/bin/bash
+
+echo "Starting Docker environment cleanup..."
+
+echo "Stopping containers and removing containers, networks..."
+docker compose down
+
+echo "Removing all images and volumes..."
+docker compose down --rmi all --volumes
+
+echo "Removing all unused volumes..."
+docker volume prune -a -f
+
+echo "System-wide prune (removing unused containers, networks, images, and optionally, volumes)..."
+docker system prune -a -f
+
+echo "Docker environment cleanup completed successfully."
