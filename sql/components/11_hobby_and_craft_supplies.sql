@@ -1,3 +1,9 @@
+INSERT INTO hardware_category (name)
+VALUES ('Hobby and Craft Supplies')
+
+ON CONFLICT
+    DO NOTHING;
+
 -- Craft and Hobby Supplies
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Acrylic Paint', 11),

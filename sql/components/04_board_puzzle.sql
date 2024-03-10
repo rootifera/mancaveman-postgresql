@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES ('Board Games and Puzzles')
+
+ON CONFLICT
+    DO NOTHING;
 -- Board Games and Puzzles
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('7 Wonders', 4),

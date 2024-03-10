@@ -1,3 +1,6 @@
+INSERT INTO hardware_category (name)
+VALUES ('Arcade Machines and Accessories') ON CONFLICT
+    DO NOTHING;
 -- Arcade Machines and Accessories
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Arcade Control Panel', 1),

@@ -1,3 +1,9 @@
+INSERT INTO hardware_category (name)
+VALUES ('Electronic Components')
+
+ON CONFLICT
+    DO NOTHING;
+
 -- Electronic Components
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Accelerometers', 7),

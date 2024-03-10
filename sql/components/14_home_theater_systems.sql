@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES
+       ('Home Theater Systems')
+ON CONFLICT
+    DO NOTHING;
 -- Home Theater Systems
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('AV Receiver', 14),

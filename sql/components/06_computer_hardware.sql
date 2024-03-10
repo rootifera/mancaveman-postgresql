@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES ('Computer Hardware')
+
+ON CONFLICT
+    DO NOTHING;
 -- Computer Hardware
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('80 PLUS Bronze PSUs', 6),

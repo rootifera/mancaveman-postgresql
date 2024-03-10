@@ -1,3 +1,9 @@
+INSERT INTO hardware_category (name)
+VALUES
+       ('Music Instruments and Equipment')
+ON CONFLICT
+    DO NOTHING;
+
 -- Music Instruments and Equipment
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Acoustic Guitar', 17),

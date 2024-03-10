@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES ('Automotive Accessories')
+
+ON CONFLICT
+    DO NOTHING;
 -- Automotive Accessories
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Air Filter', 3),

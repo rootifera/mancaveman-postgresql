@@ -1,3 +1,9 @@
+INSERT INTO hardware_category (name)
+VALUES ('Gaming Consoles')
+
+ON CONFLICT
+    DO NOTHING;
+
 -- Gaming Consoles
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Atari 2600', 10),

@@ -1,3 +1,7 @@
+INSERT INTO hardware_category (name)
+VALUES ('Audio and Video Equipment')
+ON CONFLICT
+    DO NOTHING;
 -- Audio and Video Equipment
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('3.5mm Audio Cable', 2),

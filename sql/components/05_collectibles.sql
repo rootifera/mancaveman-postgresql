@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES ('Collectibles')
+
+ON CONFLICT
+    DO NOTHING;
 -- Collectibles
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Action Figures', 5),

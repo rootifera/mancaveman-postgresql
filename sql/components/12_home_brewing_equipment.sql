@@ -1,3 +1,7 @@
+INSERT INTO hardware_category (name)
+VALUES ('Home Brewing Equipment')
+ON CONFLICT
+    DO NOTHING;
 -- Home Brewing Equipment
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Airlock', 12),

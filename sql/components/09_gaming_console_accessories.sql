@@ -1,3 +1,9 @@
+INSERT INTO hardware_category (name)
+VALUES ('Gaming Console Accessories')
+
+ON CONFLICT
+    DO NOTHING;
+
 -- Gaming Console Accessories
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Arcade Stick', 9),

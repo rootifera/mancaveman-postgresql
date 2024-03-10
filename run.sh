@@ -11,6 +11,14 @@ mkdir -p ./logs
 
 chmod -R 755 /app/logs
 
+echo "Applying database migrations..."
+alembic upgrade head
+if [ $? -ne 0 ]; then
+    echo "Failed to apply migrations."
+    exit 1
+fi
+echo "Database migrations applied successfully."
+
 MAX_CORES=4
 
 CPU_CORES=$(lscpu -p=CORE,SOCKET | grep -v '^#' | sort -u | wc -l)
@@ -35,5 +43,5 @@ if [ "$MODE" = "multi" ]; then
     gunicorn main:app -w $WORKERS -k uvicorn.workers.UvicornWorker --threads 2 -b 0.0.0.0:8080 --access-logfile $ACCESS_LOG --error-logfile $ERROR_LOG
 else
     echo "Starting in single-threaded mode with Uvicorn..."
-    uvicorn main:app --host 0.0.0.0 --port 8080
+    uvicorn main:app --host 0.0.0.0 --port 8080 --proxy-headers --forwarded-allow-ips '*'
 fi

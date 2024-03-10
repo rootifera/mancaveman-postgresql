@@ -13,8 +13,8 @@ if [ ! -f "$ENV_FILE" ]; then
     ALGORITHM="HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES="60"
     REFRESH_TOKEN_EXPIRE_HOURS="72"
-    PORT="8080"
-    MODE="single"
+    PORT="3131"
+    MODE="multi"
     CORE_LIMIT=True
 
     cat <<EOF > "$ENV_FILE"

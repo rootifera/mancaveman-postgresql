@@ -50,7 +50,7 @@ def _inject_sql_file(file_path):
 
 
 def _inject_initial_data():
-    for sql_file in ['brands.sql', 'categories.sql']:
+    for sql_file in ['brands.sql']:
         _inject_sql_file(f'sql/{sql_file}')
 
     components_path = 'sql/components'

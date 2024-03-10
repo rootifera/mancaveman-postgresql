@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES
+       ('Sporting Goods')
+ON CONFLICT
+    DO NOTHING;
 -- Sporting Equipment
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Archery Bow', 20),
