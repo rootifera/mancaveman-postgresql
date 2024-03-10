@@ -11,6 +11,14 @@ mkdir -p ./logs
 
 chmod -R 755 /app/logs
 
+echo "Applying database migrations..."
+alembic upgrade head
+if [ $? -ne 0 ]; then
+    echo "Failed to apply migrations."
+    exit 1
+fi
+echo "Database migrations applied successfully."
+
 MAX_CORES=4
 
 CPU_CORES=$(lscpu -p=CORE,SOCKET | grep -v '^#' | sort -u | wc -l)
@@ -28,8 +36,6 @@ fi
 if [ "$WORKERS" -lt 1 ]; then
     WORKERS=1
 fi
-
-
 
 if [ "$MODE" = "multi" ]; then
     echo "Number of workers: $WORKERS"

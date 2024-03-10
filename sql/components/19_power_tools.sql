@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES
+       ('Power Tools')
+ON CONFLICT
+    DO NOTHING;
 -- Power Tools
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Air Compressor', 19),

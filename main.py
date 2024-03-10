@@ -35,7 +35,7 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 # prod: app = FastAPI(docs_url=None, redoc_url=None)
-models.Base.metadata.create_all(bind=engine)
+# models.Base.metadata.create_all(bind=engine)
 
 app.include_router(auth.router)
 app.include_router(admin.router)

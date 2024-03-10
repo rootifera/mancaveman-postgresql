@@ -1,3 +1,8 @@
+INSERT INTO hardware_category (name)
+VALUES
+       ('Tools')
+ON CONFLICT
+    DO NOTHING;
 -- Manual Tools
 INSERT INTO component_type (name, hardware_category_id)
 VALUES ('Adjustable Wrench', 21),
