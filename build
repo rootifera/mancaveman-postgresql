@@ -8,10 +8,11 @@ usage() {
     echo "  --build_number NUMBER     Set the build number."
     echo "  --version_file FILE       Set the version file."
     echo "  --push                    Push the Docker image."
+    echo "  --update-schema           Generate new Alembic schema revision (if there are model changes)."
     exit 1
 }
 
-for cmd in jq docker python; do
+for cmd in jq docker python alembic; do
     if ! command -v $cmd &> /dev/null; then
         echo "Error: $cmd is required but not installed." >&2
         exit 1
@@ -20,13 +21,18 @@ done
 
 version="0.2.0"
 build_name="Don Copal"
+build_number=""
 version_file="version.json"
+push=false
+update_schema=false
 
 ENV_FILE="./.env"
 if [ ! -f "$ENV_FILE" ]; then
     echo "Creating .env file before proceeding..."
     ./create_env
 fi
+
+source $ENV_FILE
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -35,9 +41,25 @@ while [[ $# -gt 0 ]]; do
         --build_number) build_number="$2"; shift 2 ;;
         --version_file) version_file="$2"; shift 2 ;;
         --push) push=true; shift ;;
+        --update-schema) update_schema=true; shift ;;
         *) echo "Unknown option: $1" >&2; usage ;;
     esac
 done
+
+if [ "$update_schema" = true ]; then
+    echo "Starting PostgreSQL container for schema update..."
+    docker run --name temp_postgres -e POSTGRES_USER=$POSTGRES_USER -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -e POSTGRES_DB=$POSTGRES_DB -d -p 5432:5432 postgres
+    echo "Waiting for PostgreSQL to be fully up and running..."
+    sleep 10
+
+    echo "Generating new Alembic schema revision..."
+    alembic revision --autogenerate -m "New DB Schema"
+
+    echo "Stopping temporary PostgreSQL container..."
+    docker stop temp_postgres
+    docker rm temp_postgres
+fi
+
 
 if [[ -z "$build_number" ]]; then
     build_number=$(jq -r '.mancave[0].buildNumber' "$version_file")
@@ -53,14 +75,29 @@ if ! python -c "from tools.common import version_generator; version_generator('$
     exit 1
 fi
 
+POSTGRES_CONTAINER_NAME="temp_postgres_for_alembic"
+echo "Starting temporary PostgreSQL container..."
+docker run --rm --name $POSTGRES_CONTAINER_NAME -e POSTGRES_USER=$POSTGRES_USER -e POSTGRES_PASSWORD=$POSTGRES_PASSWORD -e POSTGRES_DB=$POSTGRES_DB -d -p 5432:5432 postgres
+echo "Waiting for PostgreSQL to be fully up and running..."
+sleep 10
+
+echo "Initializing database schema with Alembic migrations..."
+alembic upgrade head
+
+echo "Building with docker compose..."
 if ! docker compose build; then
     echo "Error: Docker build failed." >&2
     exit 1
 fi
 
-if [[ "$push" == true ]]; then
-    if ! docker push rootifera/mancaveman:psql; then
+if [ "$push" = true ]; then
+    echo "Pushing Docker image..."
+    if ! docker compose push mancaveman; then
         echo "Error: Docker push failed." >&2
         exit 1
     fi
 fi
+
+echo "Cleaning up temporary PostgreSQL container..."
+docker container stop $POSTGRES_CONTAINER_NAME
+echo "Build process completed successfully."
