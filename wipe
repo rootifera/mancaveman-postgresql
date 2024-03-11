@@ -8,10 +8,10 @@ docker compose down
 echo "Removing all images and volumes..."
 docker compose down --rmi all --volumes
 
-echo "Removing all unused volumes..."
+echo "Volume prune"
 docker volume prune -a -f
 
-echo "System-wide prune (removing unused containers, networks, images, and optionally, volumes)..."
+echo "System-wide prune"
 docker system prune -a -f
 
 echo "Docker environment cleanup completed successfully."
