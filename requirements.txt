@@ -31,7 +31,7 @@ pycparser==2.21
 pydantic==2.6.3
 pydantic_core==2.16.3
 PyJWT==2.8.0
-pyOpenSSL==24.0.0
+pyOpenSSL==24.1.0
 PySocks==1.7.1
 python-dotenv==1.0.1
 python-jose==3.3.0
@@ -47,5 +47,5 @@ starlette==0.36.3
 starlette-context==0.3.6
 typing_extensions==4.10.0
 urllib3==2.2.1
-uvicorn==0.27.1
+uvicorn==0.28.0
 validators==0.22.0
