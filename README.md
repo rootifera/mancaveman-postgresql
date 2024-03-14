@@ -10,3 +10,5 @@ because buildx is shit
 and docker compose clean up:
 
 docker compose down --rmi all --volumes
+
+add the new scripts here
