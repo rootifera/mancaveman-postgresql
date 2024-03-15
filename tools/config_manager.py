@@ -46,14 +46,11 @@ def _inject_sql_file(file_path):
         session.rollback()
 
 
-def _inject_initial_data():
-    for sql_file in ['brands.sql']:
-        _inject_sql_file(f'sql/{sql_file}')
-
+def inject_sql_data(prefixes):
     components_path = 'sql/components'
     component_files = sorted(os.listdir(components_path))
     for component_file in component_files:
-        if component_file.endswith('.sql'):
+        if component_file.endswith('.sql') and any(component_file.startswith(prefix) for prefix in prefixes):
             _inject_sql_file(os.path.join(components_path, component_file))
 
 
@@ -77,6 +74,6 @@ def set_initdb(status: bool):
 def first_start_config():
     if is_initdb():
         _create_admin_user()
-        _inject_initial_data()
+        # _inject_initial_data()
         set_initdb(True)
         return True

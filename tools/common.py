@@ -1,14 +1,11 @@
 # shared functions
 import json
-import os
 import random
 import secrets
 import string
 from datetime import datetime
 
 from starlette.exceptions import HTTPException
-
-from definitions import ROOT_DIR
 
 
 def validate_user(user):
@@ -41,4 +38,3 @@ def version_generator(version: str, buildname: str, buildnumber: str, version_fi
 
     with open(version_file, 'w') as f:
         json.dump(ver, f, indent=2)
-

@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing import List
 
 from fastapi import APIRouter, Depends
 from fastapi_limiter.depends import RateLimiter
@@ -11,7 +12,7 @@ from dependencies import db_dependency, user_dependency, bcrypt_context
 from models import CreateUserRequest, Users, Hardware, Software
 from tools import actionlog
 from tools.common import validate_admin
-from tools.config_manager import first_start_config
+from tools.config_manager import first_start_config, inject_sql_data
 from tools.config_manager_redis import get_hostname, get_email_credentials, get_health_check_key, is_app_passwd_valid, \
     is_hostname_valid, set_hostname, set_email_credentials
 from .auth import is_unique_username_and_email
@@ -142,6 +143,16 @@ async def set_server_config(user: user_dependency, host_name: str, email_user: s
 
     await set_hostname(host_name)
     await set_email_credentials(email_user, email_app_passwd)
+
+
+@router.post("/import-sql/")
+async def import_sql(user: user_dependency, prefixes: List[str]):
+    validate_admin(user)
+    try:
+        inject_sql_data(prefixes)
+        return {"message": "SQL files imported successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/first_run", dependencies=[Depends(RateLimiter(times=1, seconds=60))])
