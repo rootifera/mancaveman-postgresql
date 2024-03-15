@@ -8,15 +8,12 @@ from sqlalchemy.orm import sessionmaker
 
 import database
 from models import Users, InitDB
-from .config_loader import load_config
 
 Session = sessionmaker(bind=database.engine)
 session = Session()
 
 bcrypt_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 logging.getLogger('passlib').setLevel(logging.ERROR)
-
-config = load_config()
 
 
 def _is_no_users():

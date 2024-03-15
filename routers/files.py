@@ -10,9 +10,6 @@ from starlette.exceptions import HTTPException
 from dependencies import user_dependency
 from tools.common import randomize_filename
 from tools.common import validate_user, validate_admin
-from tools.config_loader import load_config
-
-config = load_config()
 
 router = APIRouter(
     prefix='/files',

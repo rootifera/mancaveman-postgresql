@@ -17,9 +17,7 @@ from starlette.exceptions import HTTPException
 
 from database import get_db, get_redis_connection
 from models import Users, Token
-from tools.config_loader import load_config
 
-config = load_config()
 load_dotenv()
 
 router = APIRouter(
