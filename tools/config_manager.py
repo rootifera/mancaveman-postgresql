@@ -47,9 +47,6 @@ def _inject_sql_file(file_path):
 
 
 def _inject_initial_data():
-    for sql_file in ['brands.sql']:
-        _inject_sql_file(f'sql/{sql_file}')
-
     components_path = 'sql/components'
     component_files = sorted(os.listdir(components_path))
     for component_file in component_files:
@@ -77,6 +74,6 @@ def set_initdb(status: bool):
 def first_start_config():
     if is_initdb():
         _create_admin_user()
-        _inject_initial_data()
+        # _inject_initial_data()
         set_initdb(True)
         return True
