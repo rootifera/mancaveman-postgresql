@@ -42,26 +42,3 @@ def version_generator(version: str, buildname: str, buildnumber: str, version_fi
     with open(version_file, 'w') as f:
         json.dump(ver, f, indent=2)
 
-
-def find_duplicate_lines(folder_path=ROOT_DIR + '/sql/components'):
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)
-        if os.path.isfile(file_path) and file_path.endswith('.sql'):
-            print(f"Checking file: {filename}")
-            line_dict = {}
-            total_lines = 0
-            with open(file_path, 'r') as file:
-                for line_number, line in enumerate(file, start=1):
-                    total_lines += 1
-                    line = line.strip()
-                    if line in line_dict:
-                        line_dict[line].append(line_number)
-                    else:
-                        line_dict[line] = [line_number]
-
-            print(f"Total lines in {filename}: {total_lines}")
-
-            for line, line_numbers in line_dict.items():
-                if len(line_numbers) > 1:
-                    for line_number in line_numbers:
-                        print(f"{filename} -- {line_number} -- {line}")
