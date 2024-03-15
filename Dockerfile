@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 
 EXPOSE 8080
 
-COPY --chown=caveman:caveman run.sh /app/run.sh
-RUN chmod +x /app/run.sh
+COPY --chown=caveman:caveman scripts/run.sh /app/scripts/run.sh
+RUN chmod +x /app/scripts/run.sh
 
-CMD ["/app/run.sh"]
+CMD ["/app/scripts/run.sh"]

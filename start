@@ -18,7 +18,7 @@ print_separator() {
     print_color "$BLUE" "===================================================="
 }
 
-./create_env
+./scripts/create_env
 
 print_separator
 
