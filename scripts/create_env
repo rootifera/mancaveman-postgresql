@@ -1,6 +1,10 @@
 #!/bin/bash
 
-ENV_FILE="./.env"
+cd "$(dirname "$0")"
+# shellcheck disable=SC2103
+cd ..
+
+ENV_FILE=".env"
 
 if [ ! -f "$ENV_FILE" ]; then
     echo "Creating .env file..."
@@ -22,7 +26,7 @@ if [ ! -f "$ENV_FILE" ]; then
 POSTGRES_DB=$POSTGRES_DB
 POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-SQLALCHEMY_DATABASE_URL=postgresql://\${POSTGRES_USER}:\${POSTGRES_PASSWORD}@postgres/\${POSTGRES_DB}
+SQLALCHEMY_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
 REDIS_URL=$REDIS_URL
 ### Keys and Authentication ###
 SECRET_KEY=$SECRET_KEY
@@ -36,7 +40,7 @@ CORE_LIMIT=$CORE_LIMIT
 EOF
 
     echo "########## .env file created successfully. ##########"
-    sleep 2 # just giving a little space to docker to read the file
+    sleep 2 # Just giving a little space to Docker to read the file
 else
     echo "########## .env file already exists. Skipping creation. ##########"
 fi

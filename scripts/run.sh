@@ -1,15 +1,20 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
+# shellcheck disable=SC2103
+cd ..
+
 set -a
 [ -f .env ] && . .env
 set +a
 
-ACCESS_LOG="./logs/access.log"
-ERROR_LOG="./logs/error.log"
+LOGS_DIR="./logs"
+ACCESS_LOG="$LOGS_DIR/access.log"
+ERROR_LOG="$LOGS_DIR/error.log"
 
-mkdir -p ./logs
+mkdir -p $LOGS_DIR
 
-chmod -R 755 /app/logs
+chmod -R 755 ./logs
 
 echo "Applying database migrations..."
 alembic upgrade head

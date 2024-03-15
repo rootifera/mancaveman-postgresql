@@ -1,5 +1,9 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
+# shellcheck disable=SC2103
+cd ..
+
 echo "Starting Docker environment cleanup..."
 
 echo "Stopping containers and removing containers, networks..."
@@ -9,9 +13,9 @@ echo "Removing all images and volumes..."
 docker compose down --rmi all --volumes
 
 echo "Volume prune"
-docker volume prune -a -f
+docker volume prune --force
 
 echo "System-wide prune"
-docker system prune -a -f
+docker system prune --all --force
 
 echo "Docker environment cleanup completed successfully."
