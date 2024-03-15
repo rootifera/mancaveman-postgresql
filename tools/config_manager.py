@@ -46,11 +46,11 @@ def _inject_sql_file(file_path):
         session.rollback()
 
 
-def _inject_initial_data():
+def inject_sql_data(prefixes):
     components_path = 'sql/components'
     component_files = sorted(os.listdir(components_path))
     for component_file in component_files:
-        if component_file.endswith('.sql'):
+        if component_file.endswith('.sql') and any(component_file.startswith(prefix) for prefix in prefixes):
             _inject_sql_file(os.path.join(components_path, component_file))
 
 
