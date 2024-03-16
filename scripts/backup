@@ -1,0 +1,36 @@
+#!/bin/bash
+
+cd "$(dirname "$0")"/..
+
+# Deletes backups older than this value. Set 0 to disable deleting backups
+# This script backs up the uploads folder too, if your uploads folder is big just keep an eye on the disk space
+RETENTION_DAYS=30
+
+set -a; source .env; set +a;
+
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+BACKUP_DIR="backups/$TIMESTAMP"
+mkdir -p "$BACKUP_DIR"
+
+echo "Backing up PostgreSQL database..."
+docker compose exec -T postgres pg_dumpall -c -U "$POSTGRES_USER" > "$BACKUP_DIR/psql_backup.sql"
+
+echo "Backing up .env file..."
+cp .env "$BACKUP_DIR/env"
+
+echo "Backing up uploads..."
+docker run --rm \
+  --volumes-from $(docker compose ps -q mancaveman) \
+  -v "$(pwd)/$BACKUP_DIR:/backup" \
+  ubuntu \
+  bash -c "tar czvf /backup/uploads.tar.gz /app/uploads"
+
+echo "Backup completed successfully."
+
+if [ "$RETENTION_DAYS" -gt 0 ]; then
+    echo "Cleaning up backups older than $RETENTION_DAYS days..."
+    find "$(pwd)/backups/"* -mtime +$RETENTION_DAYS -exec rm -rf {} \;
+    echo "Cleanup completed."
+else
+    echo "Cleanup disabled."
+fi
