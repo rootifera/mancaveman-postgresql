@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Tools')
+VALUES ('Tools')
 ON CONFLICT
     DO NOTHING;
 -- Manual Tools

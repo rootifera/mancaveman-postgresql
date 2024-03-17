@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Music Instruments and Equipment')
+VALUES ('Music Instruments and Equipment')
 ON CONFLICT
     DO NOTHING;
 

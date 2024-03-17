@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Model Kits and Miniatures')
+VALUES ('Model Kits and Miniatures')
 ON CONFLICT
     DO NOTHING;
 -- Model Kits and Miniatures

@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Sporting Goods')
+VALUES ('Sporting Goods')
 ON CONFLICT
     DO NOTHING;
 -- Sporting Equipment

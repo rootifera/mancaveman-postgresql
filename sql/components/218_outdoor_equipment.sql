@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Outdoor Equipment')
+VALUES ('Outdoor Equipment')
 ON CONFLICT
     DO NOTHING;
 -- Outdoor Equipment
