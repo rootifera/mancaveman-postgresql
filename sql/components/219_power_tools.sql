@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Power Tools')
+VALUES ('Power Tools')
 ON CONFLICT
     DO NOTHING;
 -- Power Tools

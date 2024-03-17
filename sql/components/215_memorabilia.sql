@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Memorabilia')
+VALUES ('Memorabilia')
 ON CONFLICT
     DO NOTHING;
 -- Memorabilia

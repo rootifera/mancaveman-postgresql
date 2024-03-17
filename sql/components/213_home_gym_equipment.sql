@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Home Gym Equipment')
+VALUES ('Home Gym Equipment')
 
 ON CONFLICT
     DO NOTHING;

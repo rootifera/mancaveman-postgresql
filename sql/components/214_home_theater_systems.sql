@@ -1,6 +1,5 @@
 INSERT INTO hardware_category (name)
-VALUES
-       ('Home Theater Systems')
+VALUES ('Home Theater Systems')
 ON CONFLICT
     DO NOTHING;
 -- Home Theater Systems
