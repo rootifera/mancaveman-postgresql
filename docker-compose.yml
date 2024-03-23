@@ -3,7 +3,7 @@ version: '3.8'
 services:
   mancaveman:
     build: .
-    image: rootifera/mancaveman:psql
+    image: rootifera/mancaveman:latest
     ports:
       - "${PORT}:8080"
     depends_on:
