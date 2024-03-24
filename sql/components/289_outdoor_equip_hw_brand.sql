@@ -1,0 +1,28 @@
+INSERT INTO hardware_brand (name)
+VALUES ('Arcteryx'),
+       ('Black Diamond'),
+       ('Columbia Sportswear'),
+       ('Deuter'),
+       ('Eagle Creek'),
+       ('Fjällräven'),
+       ('Garmin'),
+       ('Gregory'),
+       ('Hilleberg'),
+       ('Hydro Flask'),
+       ('KEEN'),
+       ('Lowa'),
+       ('Marmot'),
+       ('Merrell'),
+       ('Nemo Equipment'),
+       ('Osprey'),
+       ('Patagonia'),
+       ('Quiksilver'),
+       ('REI Co-op'),
+       ('Salomon'),
+       ('The North Face'),
+       ('Thule'),
+       ('Vasque'),
+       ('YETI'),
+       ('Zamberlan')
+ON CONFLICT
+    DO NOTHING;
