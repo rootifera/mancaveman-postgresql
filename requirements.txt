@@ -37,7 +37,7 @@ python-dotenv==1.0.1
 python-jose==3.3.0
 python-multipart==0.0.9
 redis==5.1.0b6
-requests==2.31.0
+requests==2.32.3
 rsa==4.9
 six==1.16.0
 sniffio==1.3.1
