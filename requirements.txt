@@ -1,6 +1,6 @@
 aioredis==2.0.1
 alembic==1.13.1
-annotated-types==0.6.0
+annotated-types==0.7.0
 anyio==4.3.0
 async-timeout==4.0.3
 bcrypt==4.1.3
