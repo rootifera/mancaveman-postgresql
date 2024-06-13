@@ -35,6 +35,8 @@ async def add_location(location_request: LocationRequest, db: db_dependency, use
         parent_location = db.query(Location).filter(Location.id == location_request.parent_id).first()
         if not parent_location:
             raise HTTPException(status_code=400, detail="Parent location does not exist")
+    else:
+        location_request.parent_id = None
 
     new_location = Location(name=location_request.name, parent_id=location_request.parent_id)
     db.add(new_location)
