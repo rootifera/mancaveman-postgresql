@@ -23,8 +23,8 @@ for cmd in jq docker python alembic; do
     fi
 done
 
-version="0.2.0"
-build_name="Don Copal"
+version="1.0.0"
+build_name="Toto Santos"
 build_number=""
 version_file="version.json"
 push=false
