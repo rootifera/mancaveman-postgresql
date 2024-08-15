@@ -4,10 +4,10 @@
       "appName": "Mancaveman API",
       "database": "PostgreSQL",
       "version": "1.0.0",
-      "buildDate": "2024-06-13",
+      "buildDate": "2024-08-16",
       "buildName": "Toto Santos",
-      "buildID": "51c5e9131e87f873e84a8c60",
-      "buildNumber": "54"
+      "buildID": "eb7c6dcd7be86fd9b2f0577e",
+      "buildNumber": "55"
     }
   ],
   "inherit": true
