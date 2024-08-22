@@ -1,5 +1,7 @@
 # mancaveman
 
+this is not entirely accurate at the moment. I'll write a more detailed readme, maybe start a wiki later, soon, probably, yes. 
+
 ```
 ./start               # runs docker compose up -d
 ./stop                # runs docker compose down
