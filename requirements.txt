@@ -48,4 +48,4 @@ starlette-context==0.3.6
 typing_extensions==4.12.2
 urllib3==2.2.2
 uvicorn==0.30.6
-validators==0.33.0
+validators==0.34.0
