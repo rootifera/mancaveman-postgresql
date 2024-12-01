@@ -3,7 +3,7 @@ alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.6.0
 async-timeout==4.0.3
-bcrypt==4.2.0
+bcrypt==4.2.1
 beautifulsoup4==4.12.3
 Brotli==1.1.0
 certifi==2024.8.30
@@ -13,7 +13,7 @@ click==8.1.7
 cryptography==43.0.1
 decorator==5.1.1
 exceptiongroup==1.2.2
-fastapi==0.115.0
+fastapi==0.115.5
 fastapi-limiter==0.1.6
 greenlet==3.1.1
 gunicorn==23.0.0
@@ -35,7 +35,7 @@ pyOpenSSL==24.2.1
 PySocks==1.7.1
 python-dotenv==1.0.1
 python-jose==3.3.0
-python-multipart==0.0.18
+python-multipart==0.0.19
 redis==5.2.0
 requests==2.32.3
 rsa==4.9
