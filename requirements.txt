@@ -2,7 +2,7 @@ aioredis==2.0.1
 alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.6.2
-async-timeout==4.0.3
+async-timeout==5.0.1
 bcrypt==4.2.1
 beautifulsoup4==4.12.3
 Brotli==1.1.0
