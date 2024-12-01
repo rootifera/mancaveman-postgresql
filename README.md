@@ -24,6 +24,13 @@ I just thought it would be funny to mix "Mancave" and "Caveman" together. Thatâ€
 
 Itâ€™s fairly simple. You can download the latest version from the releases, unzip it to a host with Docker (Compose) installed, and then run the ./start command in the mancaveman folder. It will auto-generate an .env file with random keys and credentials. The start script will download the latest Mancaveman, PostgreSQL, and Redis containers and then start them in the Mancaveman network.
 
+```
+./start
+```
+
+![How to start](https://i.gyazo.com/8fea2408006f7956ae9201f2d51a6b15.png)
+
+
 The .env file looks like that:
 ```
 ### Database Config ###
