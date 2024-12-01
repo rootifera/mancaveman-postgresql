@@ -1,5 +1,5 @@
 aioredis==2.0.1
-alembic==1.13.2
+alembic==1.14.0
 annotated-types==0.7.0
 anyio==4.6.0
 async-timeout==4.0.3
@@ -35,8 +35,8 @@ pyOpenSSL==24.2.1
 PySocks==1.7.1
 python-dotenv==1.0.1
 python-jose==3.3.0
-python-multipart==0.0.10
-redis==5.1.0b7
+python-multipart==0.0.18
+redis==5.2.0
 requests==2.32.3
 rsa==4.9
 six==1.16.0
@@ -47,5 +47,5 @@ starlette
 starlette-context==0.3.6
 typing_extensions==4.12.2
 urllib3==2.2.3
-uvicorn==0.30.6
+uvicorn==0.32.1
 validators==0.34.0
