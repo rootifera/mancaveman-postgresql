@@ -1,5 +1,5 @@
 aioredis==2.0.1
-alembic==1.14.0
+alembic==1.15.1
 annotated-types==0.7.0
 anyio==4.8.0
 async-timeout==5.0.1
