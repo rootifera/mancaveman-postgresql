@@ -45,7 +45,7 @@ soupsieve==2.6
 SQLAlchemy==2.0.40
 starlette
 starlette-context==0.3.6
-typing_extensions==4.12.2
+typing_extensions==4.13.1
 urllib3==2.3.0
 uvicorn==0.34.0
 validators==0.34.0
