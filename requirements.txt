@@ -15,7 +15,7 @@ decorator==5.2.1
 exceptiongroup==1.2.2
 fastapi==0.115.12
 fastapi-limiter==0.1.6
-greenlet==3.1.1
+greenlet==3.2.0
 gunicorn==23.0.0
 h11==0.14.0
 idna==3.10
