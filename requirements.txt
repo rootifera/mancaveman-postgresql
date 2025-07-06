@@ -35,7 +35,7 @@ PyJWT==2.10.1
 pyOpenSSL==25.1.0
 PySocks==1.7.1
 python-dotenv==1.1.0
-python-jose==3.4.0
+python-jose==3.5.0
 python-multipart==0.0.20
 redis==6.2.0
 requests==2.32.3
